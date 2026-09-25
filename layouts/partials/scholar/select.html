@@ -1,0 +1,67 @@
+{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
+{{- if or (.Get "remove_duplicates") site.Params.scholar.remove_duplicates -}}
+  {{- $unique := slice -}}
+  {{- $seen := dict -}}
+  {{- $fields := split (.Get "match_fields" | default "year,title") "," -}}
+  {{- range $entries -}}
+    {{- $digest := "" -}}
+    {{- $entry := . -}}
+    {{- range $fields -}}
+      {{- $field := strings.TrimSpace . -}}
+      {{- $value := index $entry $field | default "" | string | strings.ToLower -}}
+      {{- $digest = printf "%s|%s" $digest (replaceRE `\s+` "" $value) -}}
+    {{- end -}}
+    {{- if not (index $seen $digest) -}}
+      {{- $seen = merge $seen (dict $digest true) -}}
+      {{- $unique = $unique | append $entry -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $entries = $unique -}}
+{{- end -}}
+{{- $selected := $entries -}}
+{{- $inOrder := .Get "cited_in_order" -}}
+{{- if or (.Get "cited") $inOrder -}}
+  {{- $selected = slice -}}
+  {{- $cited := slice -}}
+  {{- with hugo.Data.scholar.pages -}}
+    {{- with index . $.Page.File.Path -}}
+      {{- $cited = index .cited $file | default (slice) -}}
+      {{- with index .cited_at (printf "%d" $.Ordinal) -}}{{ $cited = .keys | default (slice) }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range $cited -}}
+    {{- $key := . -}}
+    {{- range $entries -}}
+      {{- if eq .key $key -}}{{ $selected = $selected | append . }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $inOrder -}}
+    {{- $ordered := slice -}}
+    {{- range $entries -}}{{ if in $cited .key }}{{ $ordered = $ordered | append . }}{{ end }}{{ end -}}
+    {{- $selected = $ordered -}}
+  {{- end -}}
+{{- end -}}
+{{- $query := .Get "query" | default site.Params.scholar.query -}}
+{{- $selected = partial "scholar/filter.html" (dict "entries" $selected "type" (.Get "type") "query" $query) -}}
+{{- $sortBy := .Get "sort_by" | default site.Params.scholar.sort_by -}}
+{{- if and $sortBy (ne $sortBy "none") (not $inOrder) -}}
+  {{- $fields := split $sortBy "," -}}
+  {{- $orders := split (.Get "order" | default (site.Params.scholar.order | default "ascending")) "," -}}
+  {{- range $position, $field := collections.Reverse $fields -}}
+    {{- $index := sub (sub (len $fields) 1) $position -}}
+    {{- $field = strings.TrimSpace $field -}}
+    {{- if eq $field "name" -}}{{ $field = "name_sort" }}{{ end -}}
+    {{- $orderIndex := $index -}}
+    {{- if ge $index (len $orders) -}}{{ $orderIndex = sub (len $orders) 1 }}{{ end -}}
+    {{- $direction := "asc" -}}
+    {{- if eq (strings.TrimSpace (index $orders $orderIndex)) "descending" -}}{{ $direction = "desc" }}{{ end -}}
+    {{- $selected = sort $selected $field $direction -}}
+  {{- end -}}
+{{- end -}}
+{{- $groupBy := .Get "group_by" | default site.Params.scholar.group_by -}}
+{{- if or (not $groupBy) (eq $groupBy "none") -}}
+  {{- with .Get "offset" -}}{{ $selected = after (int .) $selected }}{{ end -}}
+  {{- with .Get "max" -}}{{ $selected = first (int .) $selected }}{{ end -}}
+{{- end -}}
+{{- return $selected -}}

@@ -1,0 +1,6 @@
+{{- $entry := .entry -}}
+{{- $tag := .referenceTag -}}
+{{- printf "<%s id=%q>" $tag (printf "%s%s" .prefix $entry.key) | safeHTML -}}
+{{- .reference | safeHTML -}}
+{{- printf "</%s>" $tag | safeHTML -}}
+{{- with $entry.detail_url -}} <a class="details" href="{{ . }}">Details</a>{{ end -}}

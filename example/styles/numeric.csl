@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text">
+  <info>
+    <title>Hugo Scholar numeric example</title>
+    <id>https://example.org/styles/hugo-scholar-numeric</id>
+    <updated>2026-09-25T00:00:00+00:00</updated>
+  </info>
+  <citation collapse="citation-number">
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <text variable="citation-number"/>
+    </layout>
+  </citation>
+  <bibliography>
+    <layout>
+      <text variable="citation-number" prefix="[" suffix="] "/>
+      <text variable="title"/>
+    </layout>
+  </bibliography>
+</style>

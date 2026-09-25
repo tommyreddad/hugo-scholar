@@ -1,0 +1,18 @@
+{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $key := .Get "key" | default (.Get 0) -}}
+{{- $entry := partial "scholar/lookup.html" (dict "file" $file "key" $key) -}}
+{{- $prefix := .Get "prefix" | default "" -}}
+{{- $relative := .Get "relative" | default (site.Params.scholar.relative | default "") -}}
+{{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- $label := printf "(%s)" $entry.citation -}}
+{{- $csl := false -}}
+{{- if ne $style "basic" -}}
+  {{- with hugo.Data.scholar.pages -}}
+    {{- with index . $.Page.File.Path -}}
+      {{- $rendered := .citations -}}
+      {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_citations $style | default dict }}{{ end -}}
+      {{- with index $rendered (printf "%d" $.Ordinal) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+<blockquote>{{ .Inner | markdownify }}<cite>{{ if $entry.key }}<a class="{{ site.Params.scholar.cite_class | default "citation" }}" href="{{ $relative }}#{{ $prefix }}{{ $entry.key | urlquery }}">{{ if $csl }}{{ $label | safeHTML }}{{ else }}{{ $label }}{{ end }}</a>{{ else }}{{ site.Params.scholar.missing_reference | default "(missing reference)" }}{{ end }}</cite></blockquote>

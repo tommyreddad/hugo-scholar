@@ -1,0 +1,6 @@
+{{- $file := .file | default "references" -}}
+{{- $data := hugo.Data.scholar -}}
+{{- if not $data -}}{{ errorf "hugo-scholar: data/scholar.json is missing; run the hugo-scholar Go command before hugo" }}{{ end -}}
+{{- if not (isset $data.bibliographies $file) -}}{{ errorf "hugo-scholar: bibliography %q is missing" $file }}{{ end -}}
+{{- $entries := index $data.bibliographies $file -}}
+{{- return $entries -}}

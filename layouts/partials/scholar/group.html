@@ -1,0 +1,47 @@
+{{- $field := strings.TrimSpace (index .fields 0) -}}
+{{- $groups := dict -}}
+{{- $aliases := merge (dict "phdthesis" "thesis" "mastersthesis" "thesis") (site.Params.scholar.type_aliases | default dict) -}}
+{{- range .entries -}}
+  {{- $key := index . $field | default "Unknown" -}}
+  {{- if eq $field "type" -}}{{ $key = index $aliases $key | default $key }}{{ end -}}
+  {{- $group := index $groups $key | default (slice) -}}
+  {{- $groups = merge $groups (dict $key ($group | append .)) -}}
+{{- end -}}
+{{- $names := slice -}}
+{{- range $key, $_ := $groups -}}{{ $names = $names | append $key }}{{ end -}}
+{{- $names = sort $names -}}
+{{- $orders := split (site.Params.scholar.group_order | default "ascending") "," -}}
+{{- $orderIndex := .depth -}}
+{{- if ge $orderIndex (len $orders) -}}{{ $orderIndex = sub (len $orders) 1 }}{{ end -}}
+{{- if eq (strings.TrimSpace (index $orders $orderIndex)) "descending" -}}{{ $names = collections.Reverse $names }}{{ end -}}
+{{- if and (eq $field "type") site.Params.scholar.type_order -}}
+  {{- $ordered := slice -}}
+  {{- $wanted := site.Params.scholar.type_order -}}
+  {{- range $names -}}{{ if not (in $wanted .) }}{{ $ordered = $ordered | append . }}{{ end }}{{ end -}}
+  {{- range $wanted -}}{{ if in $names . }}{{ $ordered = $ordered | append . }}{{ end }}{{ end -}}
+  {{- $names = $ordered -}}
+{{- end -}}
+{{- range $names -}}
+  {{- $name := . -}}
+  {{- $display := $name -}}
+  {{- if eq $field "type" -}}
+    {{- $defaults := dict "article" "Journal Articles" "book" "Books" "inproceedings" "Conference Papers" "thesis" "Theses" "techreport" "Technical Reports" -}}
+    {{- $display = index (merge $defaults (site.Params.scholar.type_names | default dict)) $name | default $name -}}
+  {{- end -}}
+  {{- if eq $field "month_numeric" -}}
+    {{- $months := site.Params.scholar.month_names | default (slice "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December") -}}
+    {{- $number := int $name -}}
+    {{- if and (ge $number 1) (le $number (len $months)) -}}{{ $display = index $months (sub $number 1) }}{{ else }}{{ $display = "(unknown)" }}{{ end -}}
+  {{- end -}}
+  {{- $tags := split (site.Params.scholar.bibliography_group_tag | default "h2,h3,h4,h5") "," -}}
+  {{- $tagIndex := $.depth -}}
+  {{- if ge $tagIndex (len $tags) -}}{{ $tagIndex = sub (len $tags) 1 }}{{ end -}}
+  {{- $tag := strings.TrimSpace (index $tags $tagIndex) -}}
+  {{- if not (in (slice "h1" "h2" "h3" "h4" "h5" "h6" "div" "p") $tag) -}}{{ errorf "hugo-scholar: invalid group tag %q" $tag }}{{ end -}}
+  {{- printf "<%s class=%q>%s</%s>" $tag $.class ($display | htmlEscape) $tag | safeHTML -}}
+  {{- if gt (len $.fields) 1 -}}
+    {{- partial "scholar/group.html" (merge $ (dict "entries" (index $groups $name) "fields" (after 1 $.fields) "depth" (add $.depth 1))) -}}
+  {{- else -}}
+    {{- partial "scholar/list.html" (merge $ (dict "entries" (index $groups $name))) -}}
+  {{- end -}}
+{{- end -}}

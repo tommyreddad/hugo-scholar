@@ -1,0 +1,12 @@
+# Hugo build output
+/public/
+/resources/
+/.hugo_build.lock
+/example/public/
+/example/resources/
+/example/.hugo_build.lock
+
+# Local Go build and test output
+/hugo-scholar
+*.test
+coverage.out

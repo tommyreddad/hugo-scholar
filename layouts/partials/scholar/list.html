@@ -1,0 +1,40 @@
+{{- $listTag := .listTag -}}
+{{- $itemTag := .itemTag -}}
+{{- $referenceTag := .referenceTag -}}
+{{- if not (in (slice "ol" "ul") $listTag) -}}{{ errorf "hugo-scholar: invalid bibliography list tag %q" $listTag }}{{ end -}}
+{{- if not (in (slice "li" "div") $itemTag) -}}{{ errorf "hugo-scholar: invalid bibliography item tag %q" $itemTag }}{{ end -}}
+{{- if not (in (slice "span" "div" "p") $referenceTag) -}}{{ errorf "hugo-scholar: invalid reference tag %q" $referenceTag }}{{ end -}}
+{{- $listAttributes := printf " class=%q" .class -}}
+{{- range $name, $value := site.Params.scholar.bibliography_list_attributes -}}
+  {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid list attribute %q" $name }}{{ end -}}
+  {{- $listAttributes = printf "%s %s=%q" $listAttributes $name ($value | string | htmlEscape) -}}
+{{- end -}}
+{{- $itemAttributes := "" -}}
+{{- range $name, $value := site.Params.scholar.bibliography_item_attributes -}}
+  {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid item attribute %q" $name }}{{ end -}}
+  {{- $itemAttributes = printf "%s %s=%q" $itemAttributes $name ($value | string | htmlEscape) -}}
+{{- end -}}
+{{- printf "<%s%s>" $listTag $listAttributes | safeHTML -}}
+{{- range $index, $entry := .entries -}}
+  {{- $reference := $entry.reference -}}
+  {{- if eq $.style "basic" -}}{{ $reference = $entry.basic_reference }}{{ end -}}
+  {{- with hugo.Data.scholar.pages -}}
+    {{- with index . $.page.File.Path -}}
+      {{- $rendered := .references -}}
+      {{- if ne $.style hugo.Data.scholar.style -}}{{ $rendered = index .styled_references $.style | default dict }}{{ end -}}
+      {{- if ne $.style "basic" -}}
+        {{- with index $rendered $.file -}}
+          {{- with index . $entry.key -}}{{ $reference = . }}{{ end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- printf "<%s%s>" $itemTag $itemAttributes | safeHTML -}}
+  {{- if $.template -}}
+    {{- partial (printf "scholar/%s.html" $.template) (dict "entry" $entry "reference" $reference "index" (add $index 1) "prefix" $.prefix "referenceTag" $referenceTag) -}}
+  {{- else -}}
+    {{- partial "scholar/reference.html" (dict "entry" $entry "reference" $reference "prefix" $.prefix "referenceTag" $referenceTag) -}}
+  {{- end -}}
+  {{- printf "</%s>" $itemTag | safeHTML -}}
+{{- end -}}
+{{- printf "</%s>" $listTag | safeHTML -}}

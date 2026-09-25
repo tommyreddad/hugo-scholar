@@ -1,0 +1,12 @@
+baseURL = 'https://example.org/'
+locale = 'en-US'
+title = 'Scholar example'
+disableKinds = ['taxonomy', 'term']
+
+[module]
+  [[module.imports]]
+    path = 'github.com/tommyreddad/hugo-scholar'
+
+[params.scholar.type_names]
+book = 'Books'
+inproceedings = 'Conference papers'

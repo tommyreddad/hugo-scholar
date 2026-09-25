@@ -1,0 +1,26 @@
+{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $key := .Get "key" | default (.Get 0) -}}
+{{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
+{{- $found := false -}}
+{{- range $entries -}}
+  {{- if eq .key $key -}}
+    {{- $found = true -}}
+    {{- $reference := .reference -}}
+    {{- if eq $style "basic" -}}{{ $reference = .basic_reference }}{{ end -}}
+    {{- with hugo.Data.scholar.pages -}}
+      {{- with index . $.Page.File.Path -}}
+        {{- $rendered := .references -}}
+        {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_references $style | default dict }}{{ end -}}
+        {{- if ne $style "basic" -}}
+          {{- with index $rendered $file -}}
+            {{- with index . $key -}}{{ $reference = . }}{{ end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $.Get "block" -}}<p>{{ $reference | safeHTML }}</p>{{- else -}}{{ $reference | safeHTML }}{{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $found -}}{{ site.Params.scholar.missing_reference | default "(missing reference)" }}{{ end -}}
+{{- "" -}}

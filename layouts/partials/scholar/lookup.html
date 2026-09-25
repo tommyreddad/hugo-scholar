@@ -1,0 +1,7 @@
+{{- $entries := partial "scholar/entries.html" (dict "file" .file) -}}
+{{- $found := false -}}
+{{- $entry := dict -}}
+{{- range $entries -}}
+  {{- if eq .key $.key -}}{{ $entry = . }}{{ $found = true }}{{ end -}}
+{{- end -}}
+{{- return $entry -}}

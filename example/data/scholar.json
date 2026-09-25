@@ -1,0 +1,215 @@
+{
+  "bibliographies": {
+    "duplicates": [
+      {
+        "author": "Example, Alice",
+        "basic_reference": "Example, A. (2020). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "bibtex": "@book{edition-one,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
+        "citation": "Example, 2020",
+        "csl_citation": "(Example, 2020a)",
+        "key": "edition-one",
+        "name_sort": "example, alice",
+        "reference": "Example, A. (2020a). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "title": "The Same Book",
+        "type": "book",
+        "year": "2020"
+      },
+      {
+        "author": "Example, Alice",
+        "basic_reference": "Example, A. (2020). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "bibtex": "@book{edition-two,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
+        "citation": "Example, 2020",
+        "csl_citation": "(Example, 2020b)",
+        "key": "edition-two",
+        "name_sort": "example, alice",
+        "reference": "Example, A. (2020b). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "title": "The Same Book",
+        "type": "book",
+        "year": "2020"
+      }
+    ],
+    "reading": [
+      {
+        "author": "Curie, Marie",
+        "basic_reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
+        "bibtex": "@book{reading-example,\n  author = {Curie, Marie},\n  title = {A Reading Example},\n  year = 1911\n}",
+        "citation": "Curie, 1911",
+        "csl_citation": "(Curie, 1911)",
+        "key": "reading-example",
+        "name_sort": "curie, marie",
+        "reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
+        "title": "A Reading Example",
+        "type": "book",
+        "year": "1911"
+      }
+    ],
+    "references": [
+      {
+        "author": "Flanagan, David and Matsumoto, Yukihiro",
+        "basic_reference": "Flanagan, D., \u0026amp; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O\u0026#39;Reilly Media.",
+        "bibtex": "@book{ruby,\n  title = {The Ruby Programming Language},\n  author = {Flanagan, David and Matsumoto, Yukihiro},\n  year = 2008,\n  publisher = {O'Reilly Media}\n}",
+        "citation": "Flanagan \u0026 Matsumoto, 2008",
+        "csl_citation": "(Flanagan \u0026#38; Matsumoto, 2008)",
+        "detail_url": "/bibliography/ruby/",
+        "key": "ruby",
+        "name_sort": "flanagan, david and matsumoto, yukihiro",
+        "publisher": "O'Reilly Media",
+        "reference": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media.",
+        "title": "The Ruby Programming Language",
+        "type": "book",
+        "year": "2008"
+      },
+      {
+        "author": "Lovelace, Ada",
+        "basic_reference": "Lovelace, A. (1843). Notes on the Analytical Engine. Proceedings of the Example Conference.",
+        "bibtex": "@inproceedings{paper,\n  author = {Lovelace, Ada},\n  title = {Notes on the Analytical Engine},\n  year = {1843},\n  booktitle = conf\n}",
+        "booktitle": "Proceedings of the Example Conference",
+        "citation": "Lovelace, 1843",
+        "csl_citation": "(Lovelace, 1843)",
+        "detail_url": "/bibliography/paper/",
+        "key": "paper",
+        "links": {
+          "notes.txt": "/repository/paper.notes.txt"
+        },
+        "name_sort": "lovelace, ada",
+        "reference": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
+        "title": "Notes on the Analytical Engine",
+        "type": "inproceedings",
+        "year": "1843"
+      }
+    ]
+  },
+  "pages": {
+    "_index.md": {
+      "citations": {
+        "0": "(Flanagan \u0026#38; Matsumoto, 2008)",
+        "1": "(Lovelace, 1843)"
+      },
+      "references": {
+        "references": {
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
+          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+        }
+      },
+      "cited": {
+        "references": [
+          "ruby",
+          "paper"
+        ]
+      },
+      "cited_at": {
+        "2": {
+          "keys": [
+            "ruby",
+            "paper"
+          ]
+        }
+      }
+    },
+    "advanced.md": {
+      "citations": {
+        "0": "(Lovelace, 1843)",
+        "1": "(2008, p. 42)",
+        "14": "(Lovelace, 1843)",
+        "2": "(Flanagan \u0026#38; Matsumoto, 2008; Lovelace, 1843)",
+        "8": "(Flanagan \u0026#38; Matsumoto, 2008)"
+      },
+      "references": {
+        "references": {
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
+          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+        }
+      },
+      "cited": {
+        "references": [
+          "paper",
+          "ruby"
+        ]
+      },
+      "cited_at": {
+        "10": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "11": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "12": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "13": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "3": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "4": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        },
+        "9": {
+          "keys": [
+            "paper",
+            "ruby"
+          ]
+        }
+      },
+      "separate": {
+        "2": [
+          "(Flanagan \u0026#38; Matsumoto, 2008)",
+          "(Lovelace, 1843)"
+        ]
+      }
+    },
+    "duplicates.md": {
+      "citations": {},
+      "references": {},
+      "cited": {},
+      "cited_at": {
+        "0": {
+          "keys": []
+        },
+        "1": {
+          "keys": []
+        }
+      }
+    },
+    "grouped.md": {
+      "citations": {},
+      "references": {},
+      "cited": {},
+      "cited_at": {
+        "0": {
+          "keys": []
+        }
+      }
+    },
+    "missing.md": {
+      "citations": {},
+      "references": {
+        "references": {
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
+          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+        }
+      },
+      "cited": {}
+    }
+  },
+  "style": "apa"
+}

@@ -1,0 +1,80 @@
+{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $keys := .Get "keys" | default (.Get 0) -}}
+{{- $prefix := .Get "prefix" | default "" -}}
+{{- $relative := .Get "relative" | default (site.Params.scholar.relative | default "") -}}
+{{- $class := .Get "class" | default (site.Params.scholar.cite_class | default "citation") -}}
+{{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
+{{- $citations := slice -}}
+{{- $orderedKeys := slice -}}
+{{- $first := "" -}}
+{{- $missing := false -}}
+{{- range split $keys " " -}}
+  {{- $key := strings.TrimSpace . -}}
+  {{- if $key -}}
+    {{- $found := false -}}
+    {{- range $entries -}}
+      {{- if eq .key $key -}}
+        {{- $found = true -}}
+        {{- if not $first -}}{{ $first = $key }}{{ end -}}
+        {{- $orderedKeys = $orderedKeys | append $key -}}
+        {{- $citations = $citations | append .citation -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $found -}}{{ $missing = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- if not (strings.TrimSpace $keys) -}}{{ errorf "hugo-scholar: cite needs a citation key" }}{{ end -}}
+{{- $label := printf "(%s)" (delimit $citations "; ") -}}
+{{- $csl := false -}}
+{{- if ne $style "basic" -}}
+  {{- with hugo.Data.scholar.pages -}}
+    {{- with index . $.Page.File.Path -}}
+      {{- $rendered := .citations -}}
+      {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_citations $style | default dict }}{{ end -}}
+      {{- with index $rendered (printf "%d" $.Ordinal) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if and (not $csl) (eq $style hugo.Data.scholar.style) (ne $style "basic") (eq (len $citations) 1) -}}
+  {{- range $entries -}}
+    {{- if and (eq .key $first) .csl_citation -}}{{ $label = .csl_citation }}{{ $csl = true }}{{ end -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $csl -}}
+{{- if .Get "suppress_author" -}}
+  {{- $years := slice -}}
+  {{- range $entries -}}
+    {{- if in (split $keys " ") .key -}}{{ $years = $years | append (.year | default "n.d.") }}{{ end -}}
+  {{- end -}}
+  {{- $label = printf "(%s)" (delimit $years "; ") -}}
+{{- end -}}
+{{- with .Get "locator" -}}{{ $label = printf "%s, p. %s)" (strings.TrimSuffix ")" $label) . }}{{ end -}}
+{{- end -}}
+{{- $separate := slice -}}
+{{- with hugo.Data.scholar.pages -}}
+  {{- with index . $.Page.File.Path -}}
+    {{- $rendered := .separate -}}
+    {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_separate $style | default dict }}{{ end -}}
+    {{- $separate = index $rendered (printf "%d" $.Ordinal) | default (slice) -}}
+  {{- end -}}
+{{- end -}}
+{{- if $missing -}}
+  {{- site.Params.scholar.missing_reference | default "(missing reference)" -}}
+{{- else if and (or (.Get "separate_links") site.Params.scholar.separate_links) (gt (len $orderedKeys) 1) -}}
+  {{- $opening := "(" -}}
+  {{- $closing := ")" -}}
+  {{- $delimiter := "; " -}}
+  {{- if strings.HasPrefix $label "[" -}}{{ $opening = "[" }}{{ $closing = "]" }}{{ $delimiter = ", " }}{{ end -}}
+  {{- $opening | safeHTML -}}
+  {{- range $index, $key := $orderedKeys -}}
+    {{- if gt $index 0 -}}{{ $delimiter }}{{- end -}}
+    {{- $part := index $citations $index -}}
+    {{- if eq (len $separate) (len $orderedKeys) -}}{{ $part = index $separate $index }}{{ end -}}
+    {{- $part = strings.TrimPrefix $opening (strings.TrimSuffix $closing $part) -}}
+    <a class="{{ $class }}" href="{{ $relative }}#{{ $prefix }}{{ $key | urlquery }}">{{ if $csl }}{{ $part | safeHTML }}{{ else }}{{ $part }}{{ end }}</a>
+  {{- end -}}
+  {{- $closing | safeHTML -}}
+{{- else -}}
+  <a class="{{ $class }}" href="{{ $relative }}#{{ $prefix }}{{ $first | urlquery }}">{{ if $csl }}{{ $label | safeHTML }}{{ else }}{{ $label }}{{ end }}</a>
+{{- end -}}{{- "" -}}
