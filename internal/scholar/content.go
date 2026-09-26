@@ -24,7 +24,7 @@ func convertContentBib(options Options, data *Data) error {
 			}
 			return walkErr
 		}
-		if entry.IsDir() || (filepath.Ext(filename) != ".bib" && filepath.Ext(filename) != ".bibtex") {
+		if entry.IsDir() || isEditorLock(filename) || (filepath.Ext(filename) != ".bib" && filepath.Ext(filename) != ".bibtex") {
 			return nil
 		}
 		content, err := os.ReadFile(filename)
@@ -86,7 +86,7 @@ func convertContentBib(options Options, data *Data) error {
 			}
 			return walkErr
 		}
-		if entry.IsDir() || filepath.Ext(filename) != ".md" {
+		if entry.IsDir() || isEditorLock(filename) || filepath.Ext(filename) != ".md" {
 			return nil
 		}
 		for _, extension := range []string{".bib", ".bibtex"} {

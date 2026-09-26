@@ -240,7 +240,7 @@ func PrepareWithOptions(options Options) (Data, error) {
 			if walkErr != nil {
 				return walkErr
 			}
-			if !entry.IsDir() && (filepath.Ext(path) == ".bib" || filepath.Ext(path) == ".bibtex") {
+			if !entry.IsDir() && !isEditorLock(path) && (filepath.Ext(path) == ".bib" || filepath.Ext(path) == ".bibtex") {
 				files = append(files, path)
 			}
 			return nil

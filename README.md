@@ -6,7 +6,7 @@
 
 BibTeX citations and bibliographies for Hugo. A Go command turns BibTeX into Hugo data; the module provides the shortcodes and templates.
 
-References use APA by default through [`citeproc`](https://github.com/jgm/citeproc). Use `--style basic` if you don't need CSL formatting. Hugo only needs the generated data, so a site build does not need `citeproc`.
+References use APA by default through [`citeproc`](https://github.com/jgm/citeproc). The generator links DOI and URL text in CSL references when the entry supplies a valid HTTP(S) address. Use `--style basic` if you don't need CSL formatting. Hugo only needs the generated data, so a site build does not need `citeproc`.
 
 ## Try it
 

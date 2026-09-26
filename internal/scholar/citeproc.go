@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
@@ -290,6 +291,7 @@ func formatWithCSL(options Options, entries []Record) error {
 	if err := applyLocaleOverrides(options, options.Style, entries, citations, &result); err != nil {
 		return err
 	}
+	linkifyCSLReferences(&result, entries)
 	references := make(map[string]string)
 	for _, pair := range result.Bibliography {
 		if len(pair) != 2 {
@@ -307,6 +309,100 @@ func formatWithCSL(options Options, entries []Record) error {
 		}
 	}
 	return nil
+}
+
+func linkifyCSLReferences(result *cslResult, entries []Record) {
+	byKey := make(map[string]Entry, len(entries))
+	for _, record := range entries {
+		byKey[record.Entry["key"]] = record.Entry
+	}
+	for _, pair := range result.Bibliography {
+		if len(pair) == 2 {
+			pair[1] = linkifyCSLReference(pair[1], byKey[pair[0]])
+		}
+	}
+}
+
+// Link only URLs supplied by the entry, and only where citeproc printed them
+// as text. Preserve any markup or links already present in the CSL output.
+func linkifyCSLReference(reference string, entry Entry) string {
+	var urls []string
+	if doi := Clean(entry["doi"]); doi != "" {
+		if !strings.HasPrefix(doi, "http://") && !strings.HasPrefix(doi, "https://") {
+			doi = "https://doi.org/" + doi
+		}
+		urls = append(urls, doi)
+	}
+	if address := Clean(entry["url"]); address != "" {
+		urls = append(urls, address)
+	}
+	valid := urls[:0]
+	for _, address := range urls {
+		parsed, err := url.Parse(address)
+		if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != "" {
+			valid = append(valid, address)
+		}
+	}
+	if len(valid) == 0 {
+		return reference
+	}
+
+	var output strings.Builder
+	inAnchor := false
+	writeText := func(source string) {
+		if inAnchor {
+			output.WriteString(source)
+			return
+		}
+		decoded := html.UnescapeString(source)
+		if !strings.Contains(decoded, "http") {
+			output.WriteString(source)
+			return
+		}
+		for len(decoded) > 0 {
+			position, target := -1, ""
+			for _, address := range valid {
+				if index := strings.Index(decoded, address); index >= 0 && (position < 0 || index < position || (index == position && len(address) > len(target))) {
+					position, target = index, address
+				}
+			}
+			if position < 0 {
+				output.WriteString(html.EscapeString(decoded))
+				break
+			}
+			output.WriteString(html.EscapeString(decoded[:position]))
+			output.WriteString(`<a href="`)
+			output.WriteString(html.EscapeString(target))
+			output.WriteString(`">`)
+			output.WriteString(html.EscapeString(target))
+			output.WriteString(`</a>`)
+			decoded = decoded[position+len(target):]
+		}
+	}
+	for len(reference) > 0 {
+		start := strings.IndexByte(reference, '<')
+		if start < 0 {
+			writeText(reference)
+			break
+		}
+		writeText(reference[:start])
+		reference = reference[start:]
+		end := strings.IndexByte(reference, '>')
+		if end < 0 {
+			writeText(reference)
+			break
+		}
+		tag := reference[:end+1]
+		lower := strings.ToLower(tag)
+		if strings.HasPrefix(lower, "<a ") || lower == "<a>" {
+			inAnchor = true
+		} else if strings.HasPrefix(lower, "</a") {
+			inAnchor = false
+		}
+		output.WriteString(tag)
+		reference = reference[end+1:]
+	}
+	return output.String()
 }
 
 func applyLocaleOverrides(options Options, style string, entries []Record, citations []cslCitation, result *cslResult) error {

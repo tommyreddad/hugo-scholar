@@ -120,7 +120,7 @@ func renderPages(options Options, data *Data) error {
 			}
 			return walkErr
 		}
-		if entry.IsDir() || !isHugoContent(filename) {
+		if entry.IsDir() || isEditorLock(filename) || !isHugoContent(filename) {
 			return nil
 		}
 		source, err := os.ReadFile(filename)
@@ -244,6 +244,7 @@ func renderPages(options Options, data *Data) error {
 				if err := applyLocaleOverrides(options, style, records, citations, &result); err != nil {
 					return fmt.Errorf("%s: style %q: %w", filename, style, err)
 				}
+				linkifyCSLReferences(&result, records)
 				citationOutput := page.Citations
 				referenceOutput := page.References
 				separateOutput := page.Separate
@@ -294,6 +295,10 @@ func isHugoContent(filename string) bool {
 	default:
 		return false
 	}
+}
+
+func isEditorLock(filename string) bool {
+	return strings.HasPrefix(filepath.Base(filename), ".#")
 }
 
 func contains(values []string, value string) bool {

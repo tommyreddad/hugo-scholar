@@ -111,6 +111,40 @@ func TestPrepareFormatsAndEscapes(t *testing.T) {
 	}
 }
 
+func TestPrepareIgnoresDanglingEditorLocks(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "_bibliography")
+	content := filepath.Join(dir, "content")
+	for _, folder := range []string{source, content} {
+		if err := os.Mkdir(folder, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(source, "references.bib"), []byte(`@book{one,title={One}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(content, "_index.md"), []byte(`{{< cite "one" >}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, filename := range []string{
+		filepath.Join(source, ".#references.bib"),
+		filepath.Join(content, ".#reading.bib"),
+		filepath.Join(content, ".#index.md"),
+		filepath.Join(content, ".#_index.md"),
+	} {
+		if err := os.Symlink("missing-editor-buffer", filename); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "basic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data.Bibliographies) != 1 || len(data.Pages) != 1 || data.Pages["_index.md"].Cited["references"][0] != "one" {
+		t.Fatalf("editor locks affected generated data: %#v", data)
+	}
+}
+
 func TestCiteprocPageOrderAndLocators(t *testing.T) {
 	dir := t.TempDir()
 	for _, path := range []string{"_bibliography", "content"} {
@@ -312,6 +346,57 @@ func TestRealCiteprocNumericStyle(t *testing.T) {
 	}
 	if len(result.Bibliography) != 2 || result.Bibliography[0][0] != "second" {
 		t.Fatalf("numeric bibliography: %#v", result.Bibliography)
+	}
+}
+
+func TestRealCiteprocAPALinks(t *testing.T) {
+	if _, err := exec.LookPath("citeproc"); err != nil {
+		t.Skip("citeproc is not installed")
+	}
+	dir := t.TempDir()
+	source := filepath.Join(dir, "_bibliography")
+	content := filepath.Join(dir, "content")
+	for _, folder := range []string{source, content} {
+		if err := os.Mkdir(folder, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bib := `@book{urlcase,title={URL Test},author={Doe, Jane},year={2024},url={https://example.org/full-text?x=1&y=2}}
+@article{doicase,title={DOI Test},author={Roe, Ray},year={2023},doi={10.1234/a.b}}`
+	if err := os.WriteFile(filepath.Join(source, "references.bib"), []byte(bib), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(content, "_index.md"), []byte(`{{< cite "urlcase" >}} {{< cite "doicase" >}} {{< bibliography >}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	data, err := PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "apa", Locale: "en-US"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct{ key, link string }{
+		{"urlcase", `<a href="https://example.org/full-text?x=1&amp;y=2">https://example.org/full-text?x=1&amp;y=2</a>`},
+		{"doicase", `<a href="https://doi.org/10.1234/a.b">https://doi.org/10.1234/a.b</a>`},
+	} {
+		var entryReference string
+		for _, record := range data.Bibliographies["references"] {
+			if record.Entry["key"] == test.key {
+				entryReference = record.Entry["reference"]
+			}
+		}
+		for _, reference := range []string{data.Pages["_index.md"].References["references"][test.key], entryReference} {
+			if !strings.Contains(reference, test.link) {
+				t.Fatalf("%s reference has no APA link: %s", test.key, reference)
+			}
+		}
+	}
+}
+
+func TestLinkifyCSLReferenceKeepsExistingLinks(t *testing.T) {
+	address := "https://example.org/article"
+	reference := `<a href="https://example.org/article">https://example.org/article</a> and https://example.org/article`
+	got := linkifyCSLReference(reference, Entry{"url": address})
+	if strings.Count(got, `<a href="https://example.org/article">`) != 2 || strings.Contains(got, "<a href=\"https://example.org/article\"><a") {
+		t.Fatalf("existing link was nested or plain URL remained: %s", got)
 	}
 }
 
