@@ -29,15 +29,14 @@ Import the module in `hugo.toml`:
 path = 'github.com/tommyreddad/hugo-scholar'
 ```
 
-Add it to the site's `go.mod`. Until a release is tagged, use a local checkout:
+Add it to the site's `go.mod`:
 
 ```go
 module example.com/my-site
 
 go 1.26
 
-require github.com/tommyreddad/hugo-scholar v0.0.1
-replace github.com/tommyreddad/hugo-scholar => /absolute/path/to/hugo-scholar
+require github.com/tommyreddad/hugo-scholar v0.1.0
 ```
 
 Put BibTeX in `_bibliography/references.bib` (or `.bibtex`). From the site root, run:
