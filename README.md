@@ -20,6 +20,8 @@ hugo server
 
 The example includes generated data, so you can also run `hugo server` on its own. Add `--style basic` to the generator command to run it without `citeproc`.
 
+For a live example, see [my publications page](https://tommy.reddad.net/publications/).
+
 ## Add it to a site
 
 Import the module in `hugo.toml`:
