@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -286,6 +287,9 @@ func formatWithCSL(options Options, entries []Record) error {
 	if err != nil {
 		return err
 	}
+	if err := applyLocaleOverrides(options, options.Style, entries, citations, &result); err != nil {
+		return err
+	}
 	references := make(map[string]string)
 	for _, pair := range result.Bibliography {
 		if len(pair) != 2 {
@@ -300,6 +304,54 @@ func formatWithCSL(options Options, entries []Record) error {
 			entries[index].Entry["reference"] = reference
 		} else {
 			return fmt.Errorf("citeproc omitted bibliography entry %q", key)
+		}
+	}
+	return nil
+}
+
+func applyLocaleOverrides(options Options, style string, entries []Record, citations []cslCitation, result *cslResult) error {
+	if !options.AllowLocaleOverrides {
+		return nil
+	}
+	byLocale := make(map[string]map[string]bool)
+	for _, record := range entries {
+		locale := strings.TrimSpace(record.Entry["language"])
+		if locale == "" || strings.EqualFold(locale, options.Locale) {
+			continue
+		}
+		if byLocale[locale] == nil {
+			byLocale[locale] = make(map[string]bool)
+		}
+		byLocale[locale][record.Entry["key"]] = true
+	}
+	var locales []string
+	for locale := range byLocale {
+		locales = append(locales, locale)
+	}
+	sort.Strings(locales)
+	indices := make(map[string]int, len(result.Bibliography))
+	for index, pair := range result.Bibliography {
+		if len(pair) != 2 {
+			return fmt.Errorf("citeproc returned malformed bibliography entry")
+		}
+		indices[pair[0]] = index
+	}
+	for _, locale := range locales {
+		localized, err := runCiteproc(options.CiteprocPath, style, locale, entries, citations)
+		if err != nil {
+			return fmt.Errorf("locale %q: %w", locale, err)
+		}
+		for _, pair := range localized.Bibliography {
+			if len(pair) != 2 {
+				return fmt.Errorf("citeproc returned malformed bibliography entry for locale %q", locale)
+			}
+			if byLocale[locale][pair[0]] {
+				index, ok := indices[pair[0]]
+				if !ok {
+					return fmt.Errorf("citeproc omitted bibliography entry %q", pair[0])
+				}
+				result.Bibliography[index][1] = pair[1]
+			}
 		}
 	}
 	return nil

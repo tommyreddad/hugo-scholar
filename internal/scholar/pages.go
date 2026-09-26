@@ -241,6 +241,9 @@ func renderPages(options Options, data *Data) error {
 				if err != nil {
 					return fmt.Errorf("%s: style %q: %w", filename, style, err)
 				}
+				if err := applyLocaleOverrides(options, style, records, citations, &result); err != nil {
+					return fmt.Errorf("%s: style %q: %w", filename, style, err)
+				}
 				citationOutput := page.Citations
 				referenceOutput := page.References
 				separateOutput := page.Separate

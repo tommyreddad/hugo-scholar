@@ -201,18 +201,18 @@ func (r Record) MarshalJSON() ([]byte, error) {
 }
 
 type Options struct {
-	Source              string
-	DefaultBibliography string
-	Repository          string
-	RepositoryURL       string
-	RepositoryDelimiter string
-	DetailsDir          string
-	DetailsPermalink    string
-	Style               string
-	Locale              string
+	Source               string
+	DefaultBibliography  string
+	Repository           string
+	RepositoryURL        string
+	RepositoryDelimiter  string
+	DetailsDir           string
+	DetailsPermalink     string
+	Style                string
+	Locale               string
 	AllowLocaleOverrides bool
-	CiteprocPath        string
-	ContentDir          string
+	CiteprocPath         string
+	ContentDir           string
 }
 
 func Prepare(source string) (Data, error) {

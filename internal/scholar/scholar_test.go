@@ -31,7 +31,11 @@ func TestMain(m *testing.M) {
 		}
 		for _, reference := range input.References {
 			key := reference["id"].(string)
-			result.Bibliography = append(result.Bibliography, []string{key, fmt.Sprintf("[%d] %s", order[key], key)})
+			formatted := fmt.Sprintf("[%d] %s", order[key], key)
+			if os.Getenv("HUGO_SCHOLAR_TEST_LOCALE") == "1" {
+				formatted += " " + input.Lang
+			}
+			result.Bibliography = append(result.Bibliography, []string{key, formatted})
 		}
 		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 			os.Exit(2)
@@ -249,7 +253,7 @@ func TestContentBibConversion(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(source, "references.bib"), []byte(`@book{base,title={Base}}`), 0644); err != nil {
 		t.Fatal(err)
 	}
-	page := "---\ntitle: Reading\n---\nContact reader@example.org.\n\n@book{item,title={A {Book}},year=2024}\n\nConclusion.\n"
+	page := "---\ntitle: Reading\n---\nContact reader@example.org.\n\n@string{booktitle={A {Book}}}\n@book{item,title=booktitle,year=2024}\n\nConclusion.\n"
 	if err := os.WriteFile(filepath.Join(content, "reading.bib"), []byte(page), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +268,7 @@ func TestContentBibConversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(generated), "reader@example.org") || !strings.Contains(string(generated), `{{< reference key="item" file="reading" block=true >}}`) || !strings.Contains(string(generated), "Conclusion.") {
+	if !strings.Contains(string(generated), "reader@example.org") || strings.Contains(string(generated), "@string") || !strings.Contains(string(generated), `{{< reference key="item" file="reading" block=true >}}`) || !strings.Contains(string(generated), "Conclusion.") {
 		t.Fatalf("bad generated content: %s", generated)
 	}
 	if err := os.WriteFile(filepath.Join(content, "reading.md"), []byte("user page"), 0644); err != nil {
@@ -323,6 +327,31 @@ func TestDependentCSLStyle(t *testing.T) {
 	}
 	if resolved != bundledAPA {
 		t.Fatal("dependent style did not resolve to APA")
+	}
+}
+
+func TestLocaleOverridesKeepCitationOrder(t *testing.T) {
+	style := filepath.Join(t.TempDir(), "style.csl")
+	if err := os.WriteFile(style, []byte("<style></style>"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HUGO_SCHOLAR_TEST_CITEPROC", "1")
+	t.Setenv("HUGO_SCHOLAR_TEST_LOCALE", "1")
+	entries := []Record{
+		{Entry: Entry{"key": "english", "type": "book"}},
+		{Entry: Entry{"key": "french", "type": "book", "language": "fr-FR"}},
+	}
+	citations := []cslCitation{{Items: []cslCitationItem{{ID: "french"}}}, {Items: []cslCitationItem{{ID: "english"}}}}
+	result, err := runCiteproc(os.Args[0], style, "en-US", entries, citations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := Options{AllowLocaleOverrides: true, CiteprocPath: os.Args[0], Locale: "en-US"}
+	if err := applyLocaleOverrides(options, style, entries, citations, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Citations[0] != "[1]" || result.Bibliography[0][1] != "[2] english en-US" || result.Bibliography[1][1] != "[1] french fr-FR" {
+		t.Fatalf("locale override changed order or wrong language: %#v", result)
 	}
 }
 

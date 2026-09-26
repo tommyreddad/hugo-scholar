@@ -1,3 +1,3 @@
 module github.com/tommyreddad/hugo-scholar
 
-go 1.22
+go 1.26

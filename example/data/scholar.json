@@ -32,10 +32,11 @@
       {
         "author": "Curie, Marie",
         "basic_reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
-        "bibtex": "@book{reading-example,\n  author = {Curie, Marie},\n  title = {A Reading Example},\n  year = 1911\n}",
+        "bibtex": "@book{reading-example,\n  author = {Curie, Marie},\n  title = sampleTitle,\n  year = 1911,\n  language = {fr-FR}\n}",
         "citation": "Curie, 1911",
         "csl_citation": "(Curie, 1911)",
         "key": "reading-example",
+        "language": "fr-FR",
         "name_sort": "curie, marie",
         "reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
         "title": "A Reading Example",

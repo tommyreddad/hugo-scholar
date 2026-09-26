@@ -61,11 +61,11 @@ func convertContentBib(options Options, data *Data) error {
 				return fmt.Errorf("%s: cannot locate entry %q", filename, item["key"])
 			}
 			index += position
-			rendered.WriteString(strings.TrimRight(body[position:index], "\n"))
+			rendered.WriteString(strings.TrimRight(stripBibtexMeta(body[position:index]), "\n"))
 			fmt.Fprintf(&rendered, "\n\n{{< reference key=%q file=%q block=true >}}\n\n", item["key"], name)
 			position = index + len(raw)
 		}
-		rendered.WriteString(strings.TrimLeft(body[position:], "\n"))
+		rendered.WriteString(strings.TrimLeft(stripBibtexMeta(body[position:]), "\n"))
 		target := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".md"
 		if old, err := os.ReadFile(target); err == nil {
 			if !strings.Contains(string(old), contentMarker) {
@@ -105,6 +105,39 @@ func convertContentBib(options Options, data *Data) error {
 		}
 		return nil
 	})
+}
+
+func stripBibtexMeta(source string) string {
+	var output strings.Builder
+	position := 0
+	for position < len(source) {
+		at := strings.IndexByte(source[position:], '@')
+		if at < 0 {
+			output.WriteString(source[position:])
+			break
+		}
+		at += position
+		p := parser{source: source, pos: at + 1}
+		kind, err := p.identifier()
+		if err == nil && (strings.EqualFold(kind, "string") || strings.EqualFold(kind, "comment") || strings.EqualFold(kind, "preamble")) {
+			p.space()
+			if p.pos < len(source) && (source[p.pos] == '{' || source[p.pos] == '(') {
+				opener := source[p.pos]
+				closer := byte('}')
+				if opener == '(' {
+					closer = ')'
+				}
+				if _, err := p.wrapped(opener, closer); err == nil {
+					output.WriteString(source[position:at])
+					position = p.pos
+					continue
+				}
+			}
+		}
+		output.WriteString(source[position : at+1])
+		position = at + 1
+	}
+	return output.String()
 }
 
 func splitFrontMatter(source string) (string, string, error) {

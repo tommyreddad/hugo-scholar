@@ -8,18 +8,18 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.26", "1.27"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
-      - name: Test Go code
-        run: go test ./...
-      - name: Vet Go code
-        run: go vet ./...
+          go-version: ${{ matrix.go }}
+          check-latest: true
       - uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: '0.166.0'
+          hugo-version: "0.166.0"
           extended: true
-      - name: Build example site
-        run: hugo --source example --minify
+      - name: Check project
+        run: make check
