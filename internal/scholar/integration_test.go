@@ -21,7 +21,6 @@ func requireIntegrationTool(t *testing.T, name string) {
 
 func TestGeneratorHugoIntegration(t *testing.T) {
 	requireIntegrationTool(t, "hugo")
-	requireIntegrationTool(t, "citeproc")
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +46,7 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		page          string
 		style         string
 		useSiteStyle  bool
+		needsCiteproc bool
 		generateError string
 		config        string
 		baseURL       string
@@ -122,7 +122,7 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 			want: []string{`href="#b">[1]</a>`, `id="b">[1] Second`}, absent: []string{`id="a"`}, countItems: 1,
 		},
 		{
-			name: "shared style override",
+			name: "shared style override", needsCiteproc: true,
 			page: `{{< cite keys="b a" style="styles/numeric.csl" separate_links=true >}} {{< bibliography style="styles/numeric.csl" >}}
 {{< cite keys="x" file="other" style="styles/numeric.csl" >}} {{< bibliography file="other" style="styles/numeric.csl" >}}`,
 			files: map[string]string{"_bibliography/other.bib": `@book{x,title={Other},year=2023}`},
@@ -210,6 +210,9 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.needsCiteproc || test.useSiteStyle || (test.style != "" && test.style != "basic") {
+				requireIntegrationTool(t, "citeproc")
+			}
 			root := t.TempDir()
 			page := firstNonempty(test.page, `{{< bibliography >}}`)
 			if !strings.HasPrefix(page, "---") {

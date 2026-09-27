@@ -184,7 +184,7 @@ When moving from [Jekyll-Scholar](https://github.com/inukshuk/jekyll-scholar), u
 - `make generate`: regenerate example data and pages (requires `citeproc`).
 - `make clean`: remove example build output.
 
-Integration tests check the generator and Hugo output. Tests that need Hugo or `citeproc` skip if either is missing. Set `HUGO_SCHOLAR_REQUIRE_INTEGRATION=1` to fail instead. CI installs both tools, regenerates the example, and requires these tests.
+Integration tests check the generator and Hugo output. Tests skip when a required tool is missing; set `HUGO_SCHOLAR_REQUIRE_INTEGRATION=1` to fail instead. CI installs Hugo, runs tests that do not require `citeproc`, and builds the example from committed data. To check CSL formatting locally, install `citeproc` and run `make generate` and `HUGO_SCHOLAR_REQUIRE_INTEGRATION=1 make check`.
 
 ### Updating bundled styles
 

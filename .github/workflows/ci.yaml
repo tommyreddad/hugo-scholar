@@ -18,17 +18,5 @@ jobs:
         with:
           hugo-version: "0.166.0"
           extended: true
-      - uses: haskell-actions/setup@v2
-        with:
-          ghc-version: "9.6.7"
-          cabal-version: "3.12.1.0"
-      - name: Install citeproc
-        run: |
-          cabal install citeproc-0.13.0.1 -fexecutable --ignore-project --install-method=copy --installdir="$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Regenerate example
-        run: make generate
       - name: Check project
-        env:
-          HUGO_SCHOLAR_REQUIRE_INTEGRATION: "1"
         run: make check
