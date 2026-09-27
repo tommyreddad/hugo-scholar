@@ -175,7 +175,7 @@ To customize bibliography items, add `layouts/partials/scholar/NAME.html` and us
 
 ## Jekyll-Scholar compatibility
 
-Use Hugo shortcodes in place of Liquid tags, and run the generator before Hugo. Query and BibTeX support cover common cases, but not all BibTeX-Ruby queries or LaTeX filters.
+When moving from [Jekyll-Scholar](https://github.com/inukshuk/jekyll-scholar), use Hugo shortcodes in place of Liquid tags, and run the generator before Hugo. Query and BibTeX support cover common cases, but not all BibTeX-Ruby queries or LaTeX filters.
 
 ## Development
 
