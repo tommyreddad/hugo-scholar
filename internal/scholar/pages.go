@@ -5,9 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -20,67 +18,12 @@ type PageRender struct {
 	StyledCitations  map[string]map[string]string            `json:"styled_citations,omitempty"`
 	StyledReferences map[string]map[string]map[string]string `json:"styled_references,omitempty"`
 	StyledSeparate   map[string]map[string][]string          `json:"styled_separate,omitempty"`
+	Orders           map[string][]string                     `json:"orders,omitempty"`
+	StyledOrders     map[string]map[string][]string          `json:"styled_orders,omitempty"`
 }
 
 type CitedSnapshot struct {
 	Keys []string `json:"keys"`
-}
-
-type shortcode struct {
-	Name    string
-	Args    map[string]string
-	Ordinal int
-}
-
-var shortcodeRE = regexp.MustCompile(`(?s)\{\{[<%]\s*([A-Za-z_][\w/-]*)\b(.*?)\s*[>%]\}\}`)
-
-func parseShortcodeArgs(source string) map[string]string {
-	args := make(map[string]string)
-	var tokens []string
-	var token strings.Builder
-	quote := byte(0)
-	for i := 0; i < len(source); i++ {
-		char := source[i]
-		if quote != 0 {
-			if char == '\\' && i+1 < len(source) {
-				i++
-				token.WriteByte(source[i])
-			} else if char == quote {
-				quote = 0
-			} else {
-				token.WriteByte(char)
-			}
-		} else if char == '"' || char == '\'' {
-			quote = char
-		} else if char == ' ' || char == '\n' || char == '\t' {
-			if token.Len() > 0 {
-				tokens = append(tokens, token.String())
-				token.Reset()
-			}
-		} else {
-			token.WriteByte(char)
-		}
-	}
-	if token.Len() > 0 {
-		tokens = append(tokens, token.String())
-	}
-	for index, token := range tokens {
-		if key, value, ok := strings.Cut(token, "="); ok {
-			args[key] = value
-		} else {
-			args[strconv.Itoa(index)] = token
-		}
-	}
-	return args
-}
-
-func scanShortcodes(source string) []shortcode {
-	matches := shortcodeRE.FindAllStringSubmatch(source, -1)
-	result := make([]shortcode, 0, len(matches))
-	for index, match := range matches {
-		result = append(result, shortcode{Name: match[1], Args: parseShortcodeArgs(match[2]), Ordinal: index})
-	}
-	return result
 }
 
 func citationFromShortcode(call shortcode) (cslCitation, error) {
@@ -127,6 +70,10 @@ func renderPages(options Options, data *Data) error {
 		if err != nil {
 			return err
 		}
+		_, body, err := splitFrontMatter(string(source))
+		if err != nil {
+			return fmt.Errorf("%s: %w", filename, err)
+		}
 		relative, err := filepath.Rel(content, filename)
 		if err != nil {
 			return err
@@ -140,11 +87,13 @@ func renderPages(options Options, data *Data) error {
 			StyledCitations:  map[string]map[string]string{},
 			StyledReferences: map[string]map[string]map[string]string{},
 			StyledSeparate:   map[string]map[string][]string{},
+			Orders:           map[string][]string{},
+			StyledOrders:     map[string]map[string][]string{},
 		}
 		grouped := map[string][]shortcode{}
 		stylesByFile := map[string]map[string]bool{}
 		active := map[string][]string{}
-		for _, call := range scanShortcodes(string(source)) {
+		for _, call := range scanShortcodes(body) {
 			file := firstNonempty(call.Args["file"], options.DefaultBibliography, "references")
 			if style := call.Args["style"]; style != "" && style != options.Style && style != "basic" && (call.Name == "cite" || call.Name == "quote" || call.Name == "bibliography" || call.Name == "reference") {
 				if stylesByFile[file] == nil {
@@ -164,7 +113,7 @@ func renderPages(options Options, data *Data) error {
 					}
 				}
 			case "bibliography", "bibliography_count":
-				page.CitedAt[strconv.Itoa(call.Ordinal)] = CitedSnapshot{Keys: append([]string{}, active[file]...)}
+				page.CitedAt[call.ID] = CitedSnapshot{Keys: append([]string{}, active[file]...)}
 				if call.Args["clear"] == "true" {
 					active[file] = nil
 				}
@@ -174,6 +123,9 @@ func renderPages(options Options, data *Data) error {
 			records, ok := data.Bibliographies[file]
 			if !ok {
 				return fmt.Errorf("%s: bibliography %q not found", filename, file)
+			}
+			if len(records) == 0 {
+				continue
 			}
 			known := make(map[string]bool, len(records))
 			for _, record := range records {
@@ -248,16 +200,21 @@ func renderPages(options Options, data *Data) error {
 				citationOutput := page.Citations
 				referenceOutput := page.References
 				separateOutput := page.Separate
+				orderOutput := page.Orders
 				if style != options.Style {
-					citationOutput = map[string]string{}
-					referenceOutput = map[string]map[string]string{}
-					separateOutput = map[string][]string{}
-					page.StyledCitations[style] = citationOutput
-					page.StyledReferences[style] = referenceOutput
-					page.StyledSeparate[style] = separateOutput
+					if page.StyledCitations[style] == nil {
+						page.StyledCitations[style] = map[string]string{}
+						page.StyledReferences[style] = map[string]map[string]string{}
+						page.StyledSeparate[style] = map[string][]string{}
+						page.StyledOrders[style] = map[string][]string{}
+					}
+					citationOutput = page.StyledCitations[style]
+					referenceOutput = page.StyledReferences[style]
+					separateOutput = page.StyledSeparate[style]
+					orderOutput = page.StyledOrders[style]
 				}
 				for index, call := range validCalls {
-					citationOutput[strconv.Itoa(call.Ordinal)] = result.Citations[index]
+					citationOutput[call.ID] = result.Citations[index]
 				}
 				if multiple {
 					individual, err := runCiteproc(options.CiteprocPath, style, options.Locale, records, singles)
@@ -268,7 +225,7 @@ func renderPages(options Options, data *Data) error {
 					for index, call := range validCalls {
 						count := len(citations[index].Items)
 						if count > 1 {
-							separateOutput[strconv.Itoa(call.Ordinal)] = individual.Citations[position : position+count]
+							separateOutput[call.ID] = individual.Citations[position : position+count]
 						}
 						position += count
 					}
@@ -277,6 +234,7 @@ func renderPages(options Options, data *Data) error {
 				for _, pair := range result.Bibliography {
 					if len(pair) == 2 {
 						referenceOutput[file][pair[0]] = pair[1]
+						orderOutput[file] = append(orderOutput[file], pair[0])
 					}
 				}
 			}

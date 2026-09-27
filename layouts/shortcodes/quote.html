@@ -1,4 +1,4 @@
-{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $file := .Get "file" | default (partial "scholar/default_bibliography.html" .) -}}
 {{- $key := .Get "key" | default (.Get 0) -}}
 {{- $entry := partial "scholar/lookup.html" (dict "file" $file "key" $key) -}}
 {{- $prefix := .Get "prefix" | default "" -}}
@@ -11,7 +11,7 @@
     {{- with index . $.Page.File.Path -}}
       {{- $rendered := .citations -}}
       {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_citations $style | default dict }}{{ end -}}
-      {{- with index $rendered (printf "%d" $.Ordinal) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
+      {{- with index $rendered (partial "scholar/shortcode_id.html" $) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}

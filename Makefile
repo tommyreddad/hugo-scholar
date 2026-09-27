@@ -1,7 +1,7 @@
 GO_FILES := $(shell find cmd internal -type f -name '*.go')
 PRETTIER_FILES := $(wildcard *.md .github/*.yaml .github/workflows/*.yaml)
 
-.PHONY: check fmt fmt-check test vet build clean
+.PHONY: check fmt fmt-check test vet generate build clean
 
 check: fmt-check test vet build
 
@@ -21,6 +21,9 @@ test:
 
 vet:
 	go vet ./...
+
+generate:
+	cd example && go run ../cmd/hugo-scholar --repository static/repository --details
 
 build:
 	hugo --source example --minify

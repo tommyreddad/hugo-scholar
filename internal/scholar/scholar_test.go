@@ -410,7 +410,11 @@ func TestDependentCSLStyle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resolved != bundledAPA {
+	apa, err := loadBundledStyle("apa.csl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != apa {
 		t.Fatal("dependent style did not resolve to APA")
 	}
 }

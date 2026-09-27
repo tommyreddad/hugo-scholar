@@ -1,4 +1,4 @@
-{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $file := .Get "file" | default (partial "scholar/default_bibliography.html" .) -}}
 {{- $key := .Get "key" | default (.Get 0) -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
 {{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}

@@ -77,7 +77,7 @@ func Parse(source string) ([]Entry, error) {
 		if key == "" {
 			return nil, p.fail("empty citation key")
 		}
-		entry := Entry{"key": key, "type": kind}
+		entry := Entry{}
 		p.space()
 		if p.pos < len(source) && source[p.pos] == ',' {
 			p.pos++
@@ -112,6 +112,15 @@ func Parse(source string) ([]Entry, error) {
 				return nil, p.fail("expected comma or end of entry")
 			}
 		}
+		// BibTeX's key and type fields are not the citation ID or entry kind.
+		// Reserve the public metadata names and retain those fields separately.
+		if value, ok := entry["key"]; ok {
+			entry["bibtex_key"] = value
+		}
+		if value, ok := entry["type"]; ok {
+			entry["bibtex_type"] = value
+		}
+		entry["key"], entry["type"] = key, kind
 		entries = append(entries, entry)
 		entry["bibtex"] = source[entryStart:p.pos]
 	}
@@ -158,7 +167,7 @@ func Parse(source string) ([]Entry, error) {
 }
 
 func (p *parser) fail(message string) error {
-	return fmt.Errorf("line %d: %s", strings.Count(p.source[:p.pos], "\n")+1, message)
+	return fmt.Errorf("line %d: %s", strings.Count(p.source[:min(p.pos, len(p.source))], "\n")+1, message)
 }
 
 func (p *parser) space() {
@@ -207,7 +216,7 @@ func (p *parser) wrapped(opener, closer byte) (string, error) {
 	for p.pos < len(p.source) {
 		char := p.source[p.pos]
 		if char == '\\' {
-			p.pos += 2
+			p.pos += min(2, len(p.source)-p.pos)
 			continue
 		}
 		if char == opener {
@@ -240,7 +249,7 @@ func (p *parser) valuePart() (string, error) {
 		for p.pos < len(p.source) {
 			char := p.source[p.pos]
 			if char == '\\' {
-				p.pos += 2
+				p.pos += min(2, len(p.source)-p.pos)
 				continue
 			}
 			if char == '{' {

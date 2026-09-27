@@ -11,19 +11,32 @@ import (
 func main() {
 	source := flag.String("source", "_bibliography", "directory containing BibTeX files")
 	output := flag.String("output", "data/scholar.json", "generated Hugo data file")
-	bibliography := flag.String("bibliography", "references", "default bibliography file name without extension")
+	bibliography := flag.String("bibliography", "", "default bibliography file name (Hugo params.scholar.bibliography, or references)")
 	repository := flag.String("repository", "", "directory containing files named after citation keys")
 	repositoryURL := flag.String("repository-url", "", "public URL prefix for repository files")
 	repositoryDelimiter := flag.String("repository-delimiter", ".", "delimiter between a citation key and a repository file suffix")
 	details := flag.Bool("details", false, "generate one Hugo content page per entry in the default bibliography")
 	detailsDir := flag.String("details-dir", "bibliography", "content directory and URL path for detail pages")
 	detailsPermalink := flag.String("details-permalink", "", "detail page URL template, such as /bibliography/:year/:key/")
-	style := flag.String("style", "apa", "CSL style name, file, or HTTPS URL; use basic to skip citeproc")
+	style := flag.String("style", "", "local CSL style name or file (Hugo params.scholar.style, or apa); bundled: apa, ieee, modern-language-association; use basic to skip citeproc")
 	locale := flag.String("locale", "en-US", "CSL locale")
 	allowLocaleOverrides := flag.Bool("allow-locale-overrides", false, "format each bibliography entry in its BibTeX language when present")
 	citeproc := flag.String("citeproc", "citeproc", "path to the citeproc executable")
 	content := flag.String("content", "content", "Hugo content directory to scan for page citations")
 	flag.Parse()
+	if *bibliography == "" || *style == "" {
+		resolved, err := scholar.ReadSiteDefaults()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "hugo-scholar:", err)
+			os.Exit(1)
+		}
+		if *bibliography == "" {
+			*bibliography = resolved.Bibliography
+		}
+		if *style == "" {
+			*style = resolved.Style
+		}
+	}
 	options := scholar.Options{Source: *source, DefaultBibliography: *bibliography, Repository: *repository, RepositoryURL: *repositoryURL, RepositoryDelimiter: *repositoryDelimiter, Style: *style, Locale: *locale, AllowLocaleOverrides: *allowLocaleOverrides, CiteprocPath: *citeproc, ContentDir: *content}
 	if *details {
 		options.DetailsDir = *detailsDir

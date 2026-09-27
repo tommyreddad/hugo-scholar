@@ -4,9 +4,9 @@ title: Advanced examples
 
 Named citation: {{< cite keys="paper" prefix="advanced-" >}}.
 
-Short form: {{< cite keys="ruby" prefix="advanced-" suppress_author=true locator="42" >}}.
+Short form: {{< cite keys="go-book" prefix="advanced-" suppress_author=true locator="42" >}}.
 
-Two links in one citation: {{< cite keys="ruby paper" prefix="advanced-" separate_links=true >}}.
+Two links in one citation: {{< cite keys="go-book paper" prefix="advanced-" separate_links=true >}}.
 
 Bibliography ({{< bibliography_count type="book" >}} book):
 
@@ -16,15 +16,15 @@ Single reference: {{< reference key="paper" >}}
 
 Details: {{< cite_details key="paper" text="Read paper details" >}}
 
-> See [the book details]({{< details_link "ruby" >}}).
+> See [the book details]({{< details_link "go-book" >}}).
 
-{{< quote key="ruby" prefix="advanced-" >}}A quoted passage with a source.{{< /quote >}}
+{{< quote key="go-book" prefix="advanced-" >}}A quoted passage with a source.{{< /quote >}}
 
 Historical publications ({{< bibliography_count query="@*[year<1900]" >}}):
 
 {{< bibliography query="@*[year<1900]" prefix="old-" >}}
 
-Query checks: {{< bibliography_count query="@book[year>=2000 && author ^= Flanagan]" >}} recent book; {{< bibliography_count query="!@book" >}} other item.
+Query checks: {{< bibliography_count query="@book[year>=2000 && author ^= Donovan]" >}} recent book; {{< bibliography_count query="!@book" >}} other item.
 
 Two selectors: {{< bibliography_count query="@book, @inproceedings" >}} entries.
 

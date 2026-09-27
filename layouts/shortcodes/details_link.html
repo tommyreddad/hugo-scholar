@@ -1,5 +1,5 @@
-{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $file := .Get "file" | default (partial "scholar/default_bibliography.html" .) -}}
 {{- $key := .Get "key" | default (.Get 0) -}}
 {{- $entry := partial "scholar/lookup.html" (dict "file" $file "key" $key) -}}
 {{- if not $entry.detail_url -}}{{ errorf "hugo-scholar: no detail page for %q; run the Go command with --details" $key }}{{ end -}}
-{{- $entry.detail_url -}}
+{{- partial "scholar/url.html" $entry.detail_url -}}

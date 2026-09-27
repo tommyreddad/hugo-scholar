@@ -1,5 +1,5 @@
-{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
-{{- $keys := .Get "keys" | default (.Get 0) -}}
+{{- $file := .Get "file" | default (partial "scholar/default_bibliography.html" .) -}}
+{{- $keys := .Get "keys" | default (.Get "key") | default (.Get 0) -}}
 {{- $prefix := .Get "prefix" | default "" -}}
 {{- $relative := .Get "relative" | default (site.Params.scholar.relative | default "") -}}
 {{- $class := .Get "class" | default (site.Params.scholar.cite_class | default "citation") -}}
@@ -9,7 +9,7 @@
 {{- $orderedKeys := slice -}}
 {{- $first := "" -}}
 {{- $missing := false -}}
-{{- range split $keys " " -}}
+{{- range findRE `\S+` $keys -}}
   {{- $key := strings.TrimSpace . -}}
   {{- if $key -}}
     {{- $found := false -}}
@@ -32,7 +32,7 @@
     {{- with index . $.Page.File.Path -}}
       {{- $rendered := .citations -}}
       {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_citations $style | default dict }}{{ end -}}
-      {{- with index $rendered (printf "%d" $.Ordinal) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
+      {{- with index $rendered (partial "scholar/shortcode_id.html" $) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
     {{- end -}}
   {{- end -}}
 {{- end -}}
@@ -45,7 +45,7 @@
 {{- if .Get "suppress_author" -}}
   {{- $years := slice -}}
   {{- range $entries -}}
-    {{- if in (split $keys " ") .key -}}{{ $years = $years | append (.year | default "n.d.") }}{{ end -}}
+    {{- if in (findRE `\S+` $keys) .key -}}{{ $years = $years | append (.year | default "n.d.") }}{{ end -}}
   {{- end -}}
   {{- $label = printf "(%s)" (delimit $years "; ") -}}
 {{- end -}}
@@ -56,7 +56,7 @@
   {{- with index . $.Page.File.Path -}}
     {{- $rendered := .separate -}}
     {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_separate $style | default dict }}{{ end -}}
-    {{- $separate = index $rendered (printf "%d" $.Ordinal) | default (slice) -}}
+    {{- $separate = index $rendered (partial "scholar/shortcode_id.html" $) | default (slice) -}}
   {{- end -}}
 {{- end -}}
 {{- if $missing -}}

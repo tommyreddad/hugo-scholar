@@ -1,0 +1,6 @@
+{{- $generated := hugo.Data.scholar.bibliography | default "references" -}}
+{{- $configured := site.Params.scholar.bibliography | default $generated -}}
+{{- if and hugo.Data.scholar.bibliography (ne $configured $generated) -}}
+  {{- errorf "hugo-scholar: configured bibliography %q differs from generated bibliography %q; regenerate data with --bibliography %s" $configured $generated $configured -}}
+{{- end -}}
+{{- return $configured -}}

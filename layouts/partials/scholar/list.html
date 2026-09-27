@@ -4,15 +4,15 @@
 {{- if not (in (slice "ol" "ul") $listTag) -}}{{ errorf "hugo-scholar: invalid bibliography list tag %q" $listTag }}{{ end -}}
 {{- if not (in (slice "li" "div") $itemTag) -}}{{ errorf "hugo-scholar: invalid bibliography item tag %q" $itemTag }}{{ end -}}
 {{- if not (in (slice "span" "div" "p") $referenceTag) -}}{{ errorf "hugo-scholar: invalid reference tag %q" $referenceTag }}{{ end -}}
-{{- $listAttributes := printf " class=%q" .class -}}
+{{- $listAttributes := printf " class=\"%s\"" (.class | htmlEscape) -}}
 {{- range $name, $value := site.Params.scholar.bibliography_list_attributes -}}
   {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid list attribute %q" $name }}{{ end -}}
-  {{- $listAttributes = printf "%s %s=%q" $listAttributes $name ($value | string | htmlEscape) -}}
+  {{- $listAttributes = printf "%s %s=\"%s\"" $listAttributes $name ($value | string | htmlEscape) -}}
 {{- end -}}
 {{- $itemAttributes := "" -}}
 {{- range $name, $value := site.Params.scholar.bibliography_item_attributes -}}
   {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid item attribute %q" $name }}{{ end -}}
-  {{- $itemAttributes = printf "%s %s=%q" $itemAttributes $name ($value | string | htmlEscape) -}}
+  {{- $itemAttributes = printf "%s %s=\"%s\"" $itemAttributes $name ($value | string | htmlEscape) -}}
 {{- end -}}
 {{- printf "<%s%s>" $listTag $listAttributes | safeHTML -}}
 {{- range $index, $entry := .entries -}}
@@ -30,6 +30,7 @@
     {{- end -}}
   {{- end -}}
   {{- printf "<%s%s>" $itemTag $itemAttributes | safeHTML -}}
+  {{- range $entry.scholar_aliases -}}<span id="{{ printf "%s%s" $.prefix . }}" class="scholar-alias"></span>{{- end -}}
   {{- if $.template -}}
     {{- partial (printf "scholar/%s.html" $.template) (dict "entry" $entry "reference" $reference "index" (add $index 1) "prefix" $.prefix "referenceTag" $referenceTag) -}}
   {{- else -}}

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 var latexCommands = strings.NewReplacer(
@@ -53,8 +54,9 @@ func people(value string) []string {
 func splitNames(value string) []string {
 	var names []string
 	start, depth := 0, 0
-	for index := 0; index < len(value); index++ {
-		switch value[index] {
+	runes := []rune(value)
+	for index := 0; index < len(runes); index++ {
+		switch runes[index] {
 		case '{':
 			depth++
 		case '}':
@@ -62,14 +64,33 @@ func splitNames(value string) []string {
 				depth--
 			}
 		}
-		if depth == 0 && strings.HasPrefix(value[index:], " and ") {
-			names = append(names, strings.TrimSpace(value[start:index]))
-			index += len(" and ") - 1
+		if depth == 0 && index > 0 && index+3 < len(runes) &&
+			unicode.IsSpace(runes[index-1]) && unicode.IsSpace(runes[index+3]) &&
+			strings.EqualFold(string(runes[index:index+3]), "and") {
+			names = append(names, strings.TrimSpace(string(runes[start:index])))
+			index += 2
 			start = index + 1
 		}
 	}
-	names = append(names, strings.TrimSpace(value[start:]))
+	names = append(names, strings.TrimSpace(string(runes[start:])))
 	return names
+}
+
+func nameSort(entry Entry) string {
+	var names []string
+	for _, name := range cslNames(firstNonempty(entry["author"], entry["editor"])) {
+		if literal := name["literal"]; literal != "" {
+			names = append(names, literal)
+		} else {
+			names = append(names, name["family"]+", "+name["given"])
+		}
+	}
+	return strings.ToLower(firstNonempty(strings.Join(names, "; "), Clean(firstNonempty(entry["bibtex_key"], entry["institution"], entry["organization"], entry["publisher"]))))
+}
+
+// URL syntax is not TeX prose: in particular, a literal tilde is not a space.
+func cleanURL(value string) string {
+	return strings.TrimSpace(strings.NewReplacer(`\&`, "&", `\%`, "%", `\_`, "_", `\#`, "#", `\~{}`, "~", `\~`, "~").Replace(value))
 }
 
 func surname(person string) string {
@@ -165,10 +186,13 @@ func Reference(entry Entry) string {
 			parts = append(parts, venue+".")
 		}
 	}
-	if doi := entry["doi"]; doi != "" {
-		url := "https://doi.org/" + doi
+	if doi := cleanURL(entry["doi"]); doi != "" {
+		url := doi
+		if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+			url = "https://doi.org/" + doi
+		}
 		parts = append(parts, "<a href=\""+html.EscapeString(url)+"\">"+html.EscapeString(url)+"</a>")
-	} else if url := entry["url"]; strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
+	} else if url := cleanURL(entry["url"]); strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
 		parts = append(parts, "<a href=\""+html.EscapeString(url)+"\">"+html.EscapeString(url)+"</a>")
 	}
 	return strings.Join(parts, " ")
@@ -178,12 +202,14 @@ type Data struct {
 	Bibliographies map[string][]Record   `json:"bibliographies"`
 	Pages          map[string]PageRender `json:"pages,omitempty"`
 	Style          string                `json:"style"`
+	Bibliography   string                `json:"bibliography"`
 }
 
 type Record struct {
 	Entry     Entry
 	Links     map[string]string
 	DetailURL string
+	CSLOrder  int
 }
 
 func (r Record) MarshalJSON() ([]byte, error) {
@@ -196,6 +222,9 @@ func (r Record) MarshalJSON() ([]byte, error) {
 	}
 	if r.DetailURL != "" {
 		fields["detail_url"] = r.DetailURL
+	}
+	if r.CSLOrder > 0 {
+		fields["csl_order"] = r.CSLOrder
 	}
 	return json.Marshal(fields)
 }
@@ -229,7 +258,7 @@ func PrepareWithOptions(options Options) (Data, error) {
 	if options.Style == "" {
 		options.Style = "basic"
 	}
-	data := Data{Bibliographies: map[string][]Record{}, Style: options.Style}
+	data := Data{Bibliographies: map[string][]Record{}, Style: options.Style, Bibliography: options.DefaultBibliography}
 	sourceInfo, err := os.Stat(options.Source)
 	if err != nil && !os.IsNotExist(err) {
 		return Data{}, err
@@ -289,7 +318,7 @@ func PrepareWithOptions(options Options) (Data, error) {
 }
 
 func prepareRecords(options Options, name string, entries []Entry) ([]Record, error) {
-	var records []Record
+	records := make([]Record, 0, len(entries))
 	for _, entry := range entries {
 		if month := entry["month"]; month != "" {
 			entry["month_numeric"] = month
@@ -298,7 +327,7 @@ func prepareRecords(options Options, name string, entries []Entry) ([]Record, er
 		if year == "" {
 			year = "n.d."
 		}
-		entry["name_sort"] = strings.ToLower(Clean(firstNonempty(entry["author"], entry["editor"], entry["institution"], entry["organization"], entry["publisher"])))
+		entry["name_sort"] = nameSort(entry)
 		entry["citation"] = authorCitation(entry) + ", " + year
 		entry["basic_reference"] = Reference(entry)
 		entry["reference"] = entry["basic_reference"]

@@ -1,0 +1,5 @@
+{{- $id := printf "%d" .Ordinal -}}
+{{- with .Parent -}}
+  {{- $id = printf "%s/%s" (partial "scholar/shortcode_id.html" .) $id -}}
+{{- end -}}
+{{- return $id -}}

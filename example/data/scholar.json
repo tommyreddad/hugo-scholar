@@ -7,6 +7,7 @@
         "bibtex": "@book{edition-one,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
         "citation": "Example, 2020",
         "csl_citation": "(Example, 2020a)",
+        "csl_order": 1,
         "key": "edition-one",
         "name_sort": "example, alice",
         "reference": "Example, A. (2020a). \u003ci\u003eThe Same Book\u003c/i\u003e.",
@@ -20,6 +21,7 @@
         "bibtex": "@book{edition-two,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
         "citation": "Example, 2020",
         "csl_citation": "(Example, 2020b)",
+        "csl_order": 2,
         "key": "edition-two",
         "name_sort": "example, alice",
         "reference": "Example, A. (2020b). \u003ci\u003eThe Same Book\u003c/i\u003e.",
@@ -35,6 +37,7 @@
         "bibtex": "@book{reading-example,\n  author = {Curie, Marie},\n  title = sampleTitle,\n  year = 1911,\n  language = {fr-FR}\n}",
         "citation": "Curie, 1911",
         "csl_citation": "(Curie, 1911)",
+        "csl_order": 1,
         "key": "reading-example",
         "language": "fr-FR",
         "name_sort": "curie, marie",
@@ -46,19 +49,20 @@
     ],
     "references": [
       {
-        "author": "Flanagan, David and Matsumoto, Yukihiro",
-        "basic_reference": "Flanagan, D., \u0026amp; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O\u0026#39;Reilly Media.",
-        "bibtex": "@book{ruby,\n  title = {The Ruby Programming Language},\n  author = {Flanagan, David and Matsumoto, Yukihiro},\n  year = 2008,\n  publisher = {O'Reilly Media}\n}",
-        "citation": "Flanagan \u0026 Matsumoto, 2008",
-        "csl_citation": "(Flanagan \u0026#38; Matsumoto, 2008)",
-        "detail_url": "/bibliography/ruby/",
-        "key": "ruby",
-        "name_sort": "flanagan, david and matsumoto, yukihiro",
-        "publisher": "O'Reilly Media",
-        "reference": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media.",
-        "title": "The Ruby Programming Language",
+        "author": "Donovan, Alan A. A. and Kernighan, Brian W.",
+        "basic_reference": "Donovan, A. A. A., \u0026amp; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+        "bibtex": "@book{go-book,\n  title = {The Go Programming Language},\n  author = {Donovan, Alan A. A. and Kernighan, Brian W.},\n  year = 2015,\n  publisher = {Addison-Wesley}\n}",
+        "citation": "Donovan \u0026 Kernighan, 2015",
+        "csl_citation": "(Donovan \u0026#38; Kernighan, 2015)",
+        "csl_order": 1,
+        "detail_url": "/bibliography/go-book/",
+        "key": "go-book",
+        "name_sort": "donovan, alan a. a.; kernighan, brian w.",
+        "publisher": "Addison-Wesley",
+        "reference": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+        "title": "The Go Programming Language",
         "type": "book",
-        "year": "2008"
+        "year": "2015"
       },
       {
         "author": "Lovelace, Ada",
@@ -67,6 +71,7 @@
         "booktitle": "Proceedings of the Example Conference",
         "citation": "Lovelace, 1843",
         "csl_citation": "(Lovelace, 1843)",
+        "csl_order": 2,
         "detail_url": "/bibliography/paper/",
         "key": "paper",
         "links": {
@@ -83,98 +88,110 @@
   "pages": {
     "_index.md": {
       "citations": {
-        "0": "(Flanagan \u0026#38; Matsumoto, 2008)",
+        "0": "(Donovan \u0026#38; Kernighan, 2015)",
         "1": "(Lovelace, 1843)"
       },
       "references": {
         "references": {
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
-          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
         }
       },
       "cited": {
         "references": [
-          "ruby",
+          "go-book",
           "paper"
         ]
       },
       "cited_at": {
         "2": {
           "keys": [
-            "ruby",
+            "go-book",
             "paper"
           ]
         }
+      },
+      "orders": {
+        "references": [
+          "go-book",
+          "paper"
+        ]
       }
     },
     "advanced.md": {
       "citations": {
         "0": "(Lovelace, 1843)",
-        "1": "(2008, p. 42)",
+        "1": "(2015, p. 42)",
         "14": "(Lovelace, 1843)",
-        "2": "(Flanagan \u0026#38; Matsumoto, 2008; Lovelace, 1843)",
-        "8": "(Flanagan \u0026#38; Matsumoto, 2008)"
+        "2": "(Donovan \u0026#38; Kernighan, 2015; Lovelace, 1843)",
+        "8": "(Donovan \u0026#38; Kernighan, 2015)"
       },
       "references": {
         "references": {
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
-          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
         }
       },
       "cited": {
         "references": [
           "paper",
-          "ruby"
+          "go-book"
         ]
       },
       "cited_at": {
         "10": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "11": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "12": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "13": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "3": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "4": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         },
         "9": {
           "keys": [
             "paper",
-            "ruby"
+            "go-book"
           ]
         }
       },
       "separate": {
         "2": [
-          "(Flanagan \u0026#38; Matsumoto, 2008)",
+          "(Donovan \u0026#38; Kernighan, 2015)",
           "(Lovelace, 1843)"
+        ]
+      },
+      "orders": {
+        "references": [
+          "go-book",
+          "paper"
         ]
       }
     },
@@ -205,12 +222,19 @@
       "citations": {},
       "references": {
         "references": {
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
-          "ruby": "Flanagan, D., \u0026#38; Matsumoto, Y. (2008). \u003ci\u003eThe Ruby Programming Language\u003c/i\u003e. O’Reilly Media."
+          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
         }
       },
-      "cited": {}
+      "cited": {},
+      "orders": {
+        "references": [
+          "go-book",
+          "paper"
+        ]
+      }
     }
   },
-  "style": "apa"
+  "style": "apa",
+  "bibliography": "references"
 }

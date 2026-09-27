@@ -1,35 +1,20 @@
-{{- $file := .Get "file" | default (site.Params.scholar.bibliography | default "references") -}}
+{{- $file := .Get "file" | default (partial "scholar/default_bibliography.html" .) -}}
 {{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
-{{- if or (.Get "remove_duplicates") site.Params.scholar.remove_duplicates -}}
-  {{- $unique := slice -}}
-  {{- $seen := dict -}}
-  {{- $fields := split (.Get "match_fields" | default "year,title") "," -}}
-  {{- range $entries -}}
-    {{- $digest := "" -}}
-    {{- $entry := . -}}
-    {{- range $fields -}}
-      {{- $field := strings.TrimSpace . -}}
-      {{- $value := index $entry $field | default "" | string | strings.ToLower -}}
-      {{- $digest = printf "%s|%s" $digest (replaceRE `\s+` "" $value) -}}
-    {{- end -}}
-    {{- if not (index $seen $digest) -}}
-      {{- $seen = merge $seen (dict $digest true) -}}
-      {{- $unique = $unique | append $entry -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $entries = $unique -}}
-{{- end -}}
 {{- $selected := $entries -}}
 {{- $inOrder := .Get "cited_in_order" -}}
-{{- if or (.Get "cited") $inOrder -}}
-  {{- $selected = slice -}}
-  {{- $cited := slice -}}
-  {{- with hugo.Data.scholar.pages -}}
-    {{- with index . $.Page.File.Path -}}
-      {{- $cited = index .cited $file | default (slice) -}}
-      {{- with index .cited_at (printf "%d" $.Ordinal) -}}{{ $cited = .keys | default (slice) }}{{ end -}}
+{{- $cited := slice -}}
+{{- $pageData := dict -}}
+{{- with hugo.Data.scholar.pages -}}
+  {{- with index . $.Page.File.Path -}}
+    {{- $pageData = . -}}
+    {{- $cited = index .cited $file | default (slice) -}}
+    {{- if or ($.Get "cited") $inOrder -}}
+      {{- with index .cited_at (partial "scholar/shortcode_id.html" $) -}}{{ $cited = .keys | default (slice) }}{{ end -}}
     {{- end -}}
   {{- end -}}
+{{- end -}}
+{{- if or (.Get "cited") $inOrder -}}
+  {{- $selected = slice -}}
   {{- range $cited -}}
     {{- $key := . -}}
     {{- range $entries -}}
@@ -45,6 +30,21 @@
 {{- $query := .Get "query" | default site.Params.scholar.query -}}
 {{- $selected = partial "scholar/filter.html" (dict "entries" $selected "type" (.Get "type") "query" $query) -}}
 {{- $sortBy := .Get "sort_by" | default site.Params.scholar.sort_by -}}
+{{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- if and (not $sortBy) (not $inOrder) (ne $style "basic") -}}
+  {{- $orders := $pageData.orders | default dict -}}
+  {{- if ne $style hugo.Data.scholar.style -}}{{ $orders = index ($pageData.styled_orders | default dict) $style | default dict }}{{ end -}}
+  {{- with index $orders $file -}}
+    {{- $ordered := slice -}}
+    {{- range . -}}
+      {{- $key := . -}}
+      {{- range $selected -}}{{ if eq .key $key }}{{ $ordered = $ordered | append . }}{{ end }}{{ end -}}
+    {{- end -}}
+    {{- $selected = $ordered -}}
+  {{- else -}}
+    {{- $selected = sort $selected "csl_order" -}}
+  {{- end -}}
+{{- end -}}
 {{- if and $sortBy (ne $sortBy "none") (not $inOrder) -}}
   {{- $fields := split $sortBy "," -}}
   {{- $orders := split (.Get "order" | default (site.Params.scholar.order | default "ascending")) "," -}}
@@ -59,9 +59,40 @@
     {{- $selected = sort $selected $field $direction -}}
   {{- end -}}
 {{- end -}}
-{{- $groupBy := .Get "group_by" | default site.Params.scholar.group_by -}}
-{{- if or (not $groupBy) (eq $groupBy "none") -}}
-  {{- with .Get "offset" -}}{{ $selected = after (int .) $selected }}{{ end -}}
-  {{- with .Get "max" -}}{{ $selected = first (int .) $selected }}{{ end -}}
+{{- $deduplicate := site.Params.scholar.remove_duplicates -}}
+{{- if and .IsNamedParams (isset .Params "remove_duplicates") -}}{{ $deduplicate = .Get "remove_duplicates" }}{{ end -}}
+{{- if $deduplicate -}}
+  {{- $fields := split (.Get "match_fields" | default "year,title") "," -}}
+  {{- $groups := dict -}}
+  {{- range $selected -}}
+    {{- $digest := partial "scholar/digest.html" (dict "entry" . "fields" $fields) -}}
+    {{- $group := index $groups $digest | default (slice) -}}
+    {{- $groups = merge $groups (dict $digest ($group | append .)) -}}
+  {{- end -}}
+  {{- $unique := slice -}}
+  {{- $seen := dict -}}
+  {{- range $selected -}}
+    {{- $digest := partial "scholar/digest.html" (dict "entry" . "fields" $fields) -}}
+    {{- if not (index $seen $digest) -}}
+      {{- $seen = merge $seen (dict $digest true) -}}
+      {{- $entry := . -}}
+      {{- if not (in $cited $entry.key) -}}
+        {{- range index $groups $digest -}}
+          {{- if in $cited .key -}}{{ $entry = . }}{{ break }}{{ end -}}
+        {{- end -}}
+      {{- end -}}
+      {{- $aliases := slice -}}
+      {{- range $entries -}}
+        {{- if and (ne .key $entry.key) (eq $digest (partial "scholar/digest.html" (dict "entry" . "fields" $fields))) -}}
+          {{- $aliases = $aliases | append .key -}}
+        {{- end -}}
+      {{- end -}}
+      {{- $unique = $unique | append (merge $entry (dict "scholar_aliases" $aliases)) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $selected = $unique -}}
 {{- end -}}
+{{/* Limits apply to the complete selected list before it is grouped. */}}
+{{- if and .IsNamedParams (isset .Params "offset") -}}{{ $selected = after (int (.Get "offset")) $selected }}{{ end -}}
+{{- if and .IsNamedParams (isset .Params "max") -}}{{ $selected = first (int (.Get "max")) $selected }}{{ end -}}
 {{- return $selected -}}

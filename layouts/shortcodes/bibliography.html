@@ -1,12 +1,15 @@
 {{- $entries := partial "scholar/select.html" . -}}
 {{- $prefix := .Get "prefix" | default "" -}}
-{{- $listTag := site.Params.scholar.bibliography_list_tag | default "ol" -}}
+{{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- $defaultListTag := "ul" -}}
+{{- if eq $style "basic" -}}{{ $defaultListTag = "ol" }}{{ end -}}
+{{- $listTag := site.Params.scholar.bibliography_list_tag | default $defaultListTag -}}
 {{- $itemTag := site.Params.scholar.bibliography_item_tag | default "li" -}}
 {{- $referenceTag := site.Params.scholar.reference_tagname | default "span" -}}
 {{- $class := site.Params.scholar.bibliography_class | default "bibliography" -}}
 {{- $template := .Get "template" | default site.Params.scholar.bibliography_template -}}
 {{- $groupBy := .Get "group_by" | default site.Params.scholar.group_by -}}
-{{- $options := dict "entries" $entries "prefix" $prefix "listTag" $listTag "itemTag" $itemTag "referenceTag" $referenceTag "class" $class "template" $template "page" .Page "file" (.Get "file" | default (site.Params.scholar.bibliography | default "references")) "style" (.Get "style" | default hugo.Data.scholar.style) -}}
+{{- $options := dict "entries" $entries "prefix" $prefix "listTag" $listTag "itemTag" $itemTag "referenceTag" $referenceTag "class" $class "template" $template "page" .Page "file" (.Get "file" | default (partial "scholar/default_bibliography.html" .)) "style" (.Get "style" | default hugo.Data.scholar.style) -}}
 {{- if and $groupBy (ne $groupBy "none") -}}
   {{- partial "scholar/group.html" (merge $options (dict "fields" (split $groupBy ",") "depth" 0)) -}}
 {{- else -}}

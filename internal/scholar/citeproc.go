@@ -3,28 +3,16 @@ package scholar
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"html"
-	"io"
-	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
-
-//go:embed styles/apa.csl
-var bundledAPA string
-
-var styleCache sync.Map
 
 type cslInput struct {
 	Citations  []cslCitation    `json:"citations"`
@@ -95,11 +83,16 @@ func cslItem(entry Entry) map[string]any {
 	}
 	for bibtex, csl := range map[string]string{
 		"publisher": "publisher", "volume": "volume",
-		"number": "issue", "pages": "page", "doi": "DOI", "url": "URL", "isbn": "ISBN", "issn": "ISSN",
+		"number": "issue", "pages": "page", "isbn": "ISBN", "issn": "ISSN", "bibtex_type": "genre",
 		"abstract": "abstract", "language": "language", "edition": "edition", "chapter": "chapter-number",
 		"series": "collection-title", "note": "note", "keywords": "keyword",
 	} {
 		if value := Clean(entry[bibtex]); value != "" {
+			item[csl] = value
+		}
+	}
+	for bibtex, csl := range map[string]string{"doi": "DOI", "url": "URL"} {
+		if value := cleanURL(entry[bibtex]); value != "" {
 			item[csl] = value
 		}
 	}
@@ -174,112 +167,10 @@ func runCiteproc(binary, stylePath, locale string, entries []Record, citations [
 	return result, nil
 }
 
-func loadStyleWithParents(style string, depth int) (string, error) {
-	if depth > 8 {
-		return "", fmt.Errorf("CSL style parent chain is too deep")
-	}
-	content, err := loadStyle(style)
-	if err != nil {
-		return "", err
-	}
-	decoder := xml.NewDecoder(strings.NewReader(content))
-	for {
-		token, err := decoder.Token()
-		if err == io.EOF {
-			return content, nil
-		}
-		if err != nil {
-			return "", fmt.Errorf("parse CSL style %q: %w", style, err)
-		}
-		link, ok := token.(xml.StartElement)
-		if !ok || link.Name.Local != "link" {
-			continue
-		}
-		var relation, href string
-		for _, attribute := range link.Attr {
-			switch attribute.Name.Local {
-			case "rel":
-				relation = attribute.Value
-			case "href":
-				href = attribute.Value
-			}
-		}
-		if relation == "independent-parent" {
-			parent := href
-			if strings.HasPrefix(href, "http://www.zotero.org/styles/") || strings.HasPrefix(href, "https://www.zotero.org/styles/") {
-				parent = href[strings.LastIndex(href, "/")+1:]
-			}
-			if parent == style || parent == "" {
-				return "", fmt.Errorf("invalid parent in CSL style %q", style)
-			}
-			return loadStyleWithParents(parent, depth+1)
-		}
-	}
-}
-
-func loadStyle(style string) (string, error) {
-	if style == "apa" {
-		return bundledAPA, nil
-	}
-	if cached, ok := styleCache.Load(style); ok {
-		return cached.(string), nil
-	}
-	if strings.HasPrefix(style, "https://") {
-		content, err := downloadStyle(style)
-		if err == nil {
-			styleCache.Store(style, content)
-		}
-		return content, err
-	}
-	paths := []string{style}
-	if filepath.Ext(style) == "" {
-		paths = append(paths, filepath.Join("styles", style+".csl"))
-		if directory := os.Getenv("CSL_STYLE_DIR"); directory != "" {
-			paths = append(paths, filepath.Join(directory, style+".csl"))
-		}
-	}
-	for _, path := range paths {
-		if content, err := os.ReadFile(path); err == nil {
-			return string(content), nil
-		}
-	}
-	if filepath.Ext(style) == "" && !strings.ContainsAny(style, `/\`) {
-		content, err := downloadStyle("https://raw.githubusercontent.com/citation-style-language/styles/master/" + url.PathEscape(style) + ".csl")
-		if err == nil {
-			styleCache.Store(style, content)
-			return content, nil
-		}
-		return "", fmt.Errorf("CSL style %q not found locally or in the official style repository: %w", style, err)
-	}
-	return "", fmt.Errorf("CSL style %q not found; provide a .csl file, HTTPS URL, or style in styles/", style)
-}
-
-func downloadStyle(address string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
-	if err != nil {
-		return "", err
-	}
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return "", fmt.Errorf("download CSL style: %w", err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("download CSL style: HTTP %d", response.StatusCode)
-	}
-	content, err := io.ReadAll(io.LimitReader(response.Body, (2<<20)+1))
-	if err != nil {
-		return "", err
-	}
-	if len(content) > 2<<20 {
-		return "", fmt.Errorf("CSL style exceeds 2 MiB")
-	}
-	return string(content), nil
-}
-
 func formatWithCSL(options Options, entries []Record) error {
+	if len(entries) == 0 {
+		return nil
+	}
 	var citations []cslCitation
 	for _, record := range entries {
 		citations = append(citations, cslCitation{Items: []cslCitationItem{{ID: record.Entry["key"]}}})
@@ -288,20 +179,26 @@ func formatWithCSL(options Options, entries []Record) error {
 	if err != nil {
 		return err
 	}
+	if len(result.Bibliography) == 0 {
+		return fmt.Errorf("CSL style %q produced no bibliography; the generator's default style must provide bibliography output", options.Style)
+	}
 	if err := applyLocaleOverrides(options, options.Style, entries, citations, &result); err != nil {
 		return err
 	}
 	linkifyCSLReferences(&result, entries)
 	references := make(map[string]string)
-	for _, pair := range result.Bibliography {
+	order := make(map[string]int)
+	for index, pair := range result.Bibliography {
 		if len(pair) != 2 {
 			return fmt.Errorf("citeproc returned malformed bibliography entry")
 		}
 		references[pair[0]] = pair[1]
+		order[pair[0]] = index + 1
 	}
 	for index := range entries {
 		key := entries[index].Entry["key"]
 		entries[index].Entry["csl_citation"] = result.Citations[index]
+		entries[index].CSLOrder = order[key]
 		if reference, ok := references[key]; ok {
 			entries[index].Entry["reference"] = reference
 		} else {
@@ -327,13 +224,13 @@ func linkifyCSLReferences(result *cslResult, entries []Record) {
 // as text. Preserve any markup or links already present in the CSL output.
 func linkifyCSLReference(reference string, entry Entry) string {
 	var urls []string
-	if doi := Clean(entry["doi"]); doi != "" {
+	if doi := cleanURL(entry["doi"]); doi != "" {
 		if !strings.HasPrefix(doi, "http://") && !strings.HasPrefix(doi, "https://") {
 			doi = "https://doi.org/" + doi
 		}
 		urls = append(urls, doi)
 	}
-	if address := Clean(entry["url"]); address != "" {
+	if address := cleanURL(entry["url"]); address != "" {
 		urls = append(urls, address)
 	}
 	valid := urls[:0]

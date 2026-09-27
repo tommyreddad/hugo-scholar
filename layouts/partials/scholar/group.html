@@ -30,7 +30,8 @@
   {{- end -}}
   {{- if eq $field "month_numeric" -}}
     {{- $months := site.Params.scholar.month_names | default (slice "January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December") -}}
-    {{- $number := int $name -}}
+    {{- $number := 0 -}}
+    {{- if findRE `^[0-9]{1,2}$` $name -}}{{ $number = int $name }}{{ end -}}
     {{- if and (ge $number 1) (le $number (len $months)) -}}{{ $display = index $months (sub $number 1) }}{{ else }}{{ $display = "(unknown)" }}{{ end -}}
   {{- end -}}
   {{- $tags := split (site.Params.scholar.bibliography_group_tag | default "h2,h3,h4,h5") "," -}}
@@ -38,7 +39,7 @@
   {{- if ge $tagIndex (len $tags) -}}{{ $tagIndex = sub (len $tags) 1 }}{{ end -}}
   {{- $tag := strings.TrimSpace (index $tags $tagIndex) -}}
   {{- if not (in (slice "h1" "h2" "h3" "h4" "h5" "h6" "div" "p") $tag) -}}{{ errorf "hugo-scholar: invalid group tag %q" $tag }}{{ end -}}
-  {{- printf "<%s class=%q>%s</%s>" $tag $.class ($display | htmlEscape) $tag | safeHTML -}}
+  {{- printf "<%s class=\"%s\">%s</%s>" $tag ($.class | htmlEscape) ($display | htmlEscape) $tag | safeHTML -}}
   {{- if gt (len $.fields) 1 -}}
     {{- partial "scholar/group.html" (merge $ (dict "entries" (index $groups $name) "fields" (after 1 $.fields) "depth" (add $.depth 1))) -}}
   {{- else -}}

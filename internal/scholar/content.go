@@ -1,6 +1,7 @@
 package scholar
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -141,16 +142,32 @@ func stripBibtexMeta(source string) string {
 }
 
 func splitFrontMatter(source string) (string, string, error) {
-	if !strings.HasPrefix(source, "---\n") {
+	text := strings.TrimPrefix(source, "\ufeff")
+	offset := len(source) - len(text)
+	if strings.HasPrefix(text, "{") && !strings.HasPrefix(text, "{{") {
+		decoder := json.NewDecoder(strings.NewReader(text))
+		var value map[string]json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return "", "", fmt.Errorf("invalid JSON front matter: %w", err)
+		}
+		end := offset + int(decoder.InputOffset())
+		return source[:end], source[end:], nil
+	}
+	firstEnd := strings.IndexByte(text, '\n')
+	if firstEnd < 0 {
 		return "", source, nil
 	}
-	for start := 4; start < len(source); {
+	opening := strings.TrimSpace(text[:firstEnd])
+	if opening != "---" && opening != "+++" {
+		return "", source, nil
+	}
+	for start := offset + firstEnd + 1; start < len(source); {
 		end := strings.IndexByte(source[start:], '\n')
 		if end < 0 {
 			end = len(source) - start
 		}
 		line := strings.TrimSpace(source[start : start+end])
-		if line == "---" || line == "..." {
+		if line == opening || (opening == "---" && line == "...") {
 			end += start
 			if end < len(source) {
 				end++
@@ -159,5 +176,5 @@ func splitFrontMatter(source string) (string, string, error) {
 		}
 		start += end + 1
 	}
-	return "", "", fmt.Errorf("unclosed YAML front matter")
+	return "", "", fmt.Errorf("unclosed front matter (%s)", opening)
 }

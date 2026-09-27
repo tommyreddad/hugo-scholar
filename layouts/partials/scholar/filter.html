@@ -58,7 +58,7 @@
             {{- $match = gt (len (findRE $expected $actual 1)) 0 -}}
           {{- else if eq $operator "!~" -}}
             {{- $match = eq (len (findRE $expected $actual 1)) 0 -}}
-          {{- else -}}
+          {{- else if and (findRE `^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$` $actual) (findRE `^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$` $expected) -}}
             {{- $a := float $actual -}}
             {{- $b := float $expected -}}
             {{- if eq $operator ">" -}}{{ $match = gt $a $b }}{{ end -}}

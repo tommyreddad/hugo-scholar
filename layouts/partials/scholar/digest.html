@@ -1,0 +1,6 @@
+{{- $values := slice -}}
+{{- range .fields -}}
+  {{- $value := index $.entry (strings.TrimSpace .) | default "" | string | strings.ToLower -}}
+  {{- $values = $values | append (replaceRE `\s+` "" $value) -}}
+{{- end -}}
+{{- return ($values | jsonify | string) -}}
