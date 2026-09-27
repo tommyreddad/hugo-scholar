@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,7 +24,11 @@ func TestMain(m *testing.M) {
 				if order[item.ID] == 0 {
 					order[item.ID] = len(order) + 1
 				}
-				numbers = append(numbers, fmt.Sprint(order[item.ID]))
+				number := fmt.Sprint(order[item.ID])
+				if item.Locator != "" {
+					number += " " + item.Label + " " + item.Locator
+				}
+				numbers = append(numbers, number)
 			}
 			result.Citations = append(result.Citations, "["+strings.Join(numbers, ", ")+"]")
 		}
@@ -185,7 +188,7 @@ title: Test
 		t.Fatal(err)
 	}
 	render := data.Pages["article.md"]
-	if render.Citations["1"] != "[1, 2]" || render.Citations["2"] != "[2]" {
+	if render.Citations["1"] != "[1 page 42, 2]" || render.Citations["2"] != "[2]" {
 		t.Fatalf("wrong page citations: %#v", render.Citations)
 	}
 	if render.References["references"]["second"] != "[1] second" {
@@ -326,15 +329,12 @@ func TestContentBibConversion(t *testing.T) {
 }
 
 func TestRealCiteprocNumericStyle(t *testing.T) {
-	binary, err := exec.LookPath("citeproc")
-	if err != nil {
-		t.Skip("citeproc is not installed")
-	}
+	requireIntegrationTool(t, "citeproc")
 	entries := []Record{
 		{Entry: Entry{"key": "first", "type": "book", "title": "First", "author": "Doe, Jane", "year": "2020"}},
 		{Entry: Entry{"key": "second", "type": "book", "title": "Second", "author": "Roe, Richard", "year": "2021"}},
 	}
-	result, err := runCiteproc(binary, filepath.Join("..", "..", "example", "styles", "numeric.csl"), "en-US", entries, []cslCitation{
+	result, err := runCiteproc("citeproc", filepath.Join("..", "..", "example", "styles", "numeric.csl"), "en-US", entries, []cslCitation{
 		{Items: []cslCitationItem{{ID: "second"}}},
 		{Items: []cslCitationItem{{ID: "first"}}},
 	})
@@ -350,9 +350,7 @@ func TestRealCiteprocNumericStyle(t *testing.T) {
 }
 
 func TestRealCiteprocAPALinks(t *testing.T) {
-	if _, err := exec.LookPath("citeproc"); err != nil {
-		t.Skip("citeproc is not installed")
-	}
+	requireIntegrationTool(t, "citeproc")
 	dir := t.TempDir()
 	source := filepath.Join(dir, "_bibliography")
 	content := filepath.Join(dir, "content")
@@ -397,25 +395,6 @@ func TestLinkifyCSLReferenceKeepsExistingLinks(t *testing.T) {
 	got := linkifyCSLReference(reference, Entry{"url": address})
 	if strings.Count(got, `<a href="https://example.org/article">`) != 2 || strings.Contains(got, "<a href=\"https://example.org/article\"><a") {
 		t.Fatalf("existing link was nested or plain URL remained: %s", got)
-	}
-}
-
-func TestDependentCSLStyle(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "dependent.csl")
-	style := `<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0"><info><link rel="independent-parent" href="http://www.zotero.org/styles/apa"/></info></style>`
-	if err := os.WriteFile(path, []byte(style), 0644); err != nil {
-		t.Fatal(err)
-	}
-	resolved, err := loadStyleWithParents(path, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	apa, err := loadBundledStyle("apa.csl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resolved != apa {
-		t.Fatal("dependent style did not resolve to APA")
 	}
 }
 

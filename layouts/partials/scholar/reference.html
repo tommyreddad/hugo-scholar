@@ -1,6 +1,7 @@
 {{- $entry := .entry -}}
 {{- $tag := .referenceTag -}}
+{{- if in .reference "<div" -}}{{ $tag = "div" }}{{- end -}}
 {{- printf "<%s id=\"%s\">" $tag (printf "%s%s" .prefix $entry.key | htmlEscape) | safeHTML -}}
-{{- .reference | safeHTML -}}
+{{- partial "scholar/reference_content.html" (dict "reference" .reference) -}}
 {{- printf "</%s>" $tag | safeHTML -}}
 {{- with $entry.detail_url -}} <a class="details" href="{{ partial "scholar/url.html" . }}">Details</a>{{ end -}}

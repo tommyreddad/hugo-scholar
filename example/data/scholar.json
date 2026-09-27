@@ -6,11 +6,11 @@
         "basic_reference": "Example, A. (2020). \u003ci\u003eThe Same Book\u003c/i\u003e.",
         "bibtex": "@book{edition-one,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
         "citation": "Example, 2020",
-        "csl_citation": "(Example, 2020a)",
+        "csl_citation": "[Exam20]",
         "csl_order": 1,
         "key": "edition-one",
         "name_sort": "example, alice",
-        "reference": "Example, A. (2020a). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "reference": "\u003cdiv class=\"csl-left-margin\"\u003e[Exam20] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eExample, Alice, \u003ci\u003eThe Same Book\u003c/i\u003e, 2020.\u003c/div\u003e",
         "title": "The Same Book",
         "type": "book",
         "year": "2020"
@@ -20,11 +20,11 @@
         "basic_reference": "Example, A. (2020). \u003ci\u003eThe Same Book\u003c/i\u003e.",
         "bibtex": "@book{edition-two,\n  author = {Example, Alice},\n  title = {The Same Book},\n  year = 2020\n}",
         "citation": "Example, 2020",
-        "csl_citation": "(Example, 2020b)",
+        "csl_citation": "[Exam20]",
         "csl_order": 2,
         "key": "edition-two",
         "name_sort": "example, alice",
-        "reference": "Example, A. (2020b). \u003ci\u003eThe Same Book\u003c/i\u003e.",
+        "reference": "\u003cdiv class=\"csl-left-margin\"\u003e[Exam20] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eExample, Alice, \u003ci\u003eThe Same Book\u003c/i\u003e, 2020.\u003c/div\u003e",
         "title": "The Same Book",
         "type": "book",
         "year": "2020"
@@ -36,12 +36,12 @@
         "basic_reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
         "bibtex": "@book{reading-example,\n  author = {Curie, Marie},\n  title = sampleTitle,\n  year = 1911,\n  language = {fr-FR}\n}",
         "citation": "Curie, 1911",
-        "csl_citation": "(Curie, 1911)",
+        "csl_citation": "[Curi11]",
         "csl_order": 1,
         "key": "reading-example",
         "language": "fr-FR",
         "name_sort": "curie, marie",
-        "reference": "Curie, M. (1911). \u003ci\u003eA Reading Example\u003c/i\u003e.",
+        "reference": "\u003cdiv class=\"csl-left-margin\"\u003e[Curi11] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eCurie, Marie, \u003ci\u003eA Reading Example\u003c/i\u003e, 1911.\u003c/div\u003e",
         "title": "A Reading Example",
         "type": "book",
         "year": "1911"
@@ -53,13 +53,13 @@
         "basic_reference": "Donovan, A. A. A., \u0026amp; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
         "bibtex": "@book{go-book,\n  title = {The Go Programming Language},\n  author = {Donovan, Alan A. A. and Kernighan, Brian W.},\n  year = 2015,\n  publisher = {Addison-Wesley}\n}",
         "citation": "Donovan \u0026 Kernighan, 2015",
-        "csl_citation": "(Donovan \u0026#38; Kernighan, 2015)",
+        "csl_citation": "[DoKe15]",
         "csl_order": 1,
         "detail_url": "/bibliography/go-book/",
         "key": "go-book",
         "name_sort": "donovan, alan a. a.; kernighan, brian w.",
         "publisher": "Addison-Wesley",
-        "reference": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
+        "reference": "\u003cdiv class=\"csl-left-margin\"\u003e[DoKe15] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eDonovan, Alan A. A., and Kernighan, Brian W., \u003ci\u003eThe Go Programming Language\u003c/i\u003e, Addison-Wesley, 2015.\u003c/div\u003e",
         "title": "The Go Programming Language",
         "type": "book",
         "year": "2015"
@@ -70,7 +70,7 @@
         "bibtex": "@inproceedings{paper,\n  author = {Lovelace, Ada},\n  title = {Notes on the Analytical Engine},\n  year = {1843},\n  booktitle = conf\n}",
         "booktitle": "Proceedings of the Example Conference",
         "citation": "Lovelace, 1843",
-        "csl_citation": "(Lovelace, 1843)",
+        "csl_citation": "[Love43]",
         "csl_order": 2,
         "detail_url": "/bibliography/paper/",
         "key": "paper",
@@ -78,7 +78,7 @@
           "notes.txt": "/repository/paper.notes.txt"
         },
         "name_sort": "lovelace, ada",
-        "reference": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.",
+        "reference": "\u003cdiv class=\"csl-left-margin\"\u003e[Love43] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eLovelace, Ada, Notes on the Analytical Engine, in \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.\u003c/div\u003e",
         "title": "Notes on the Analytical Engine",
         "type": "inproceedings",
         "year": "1843"
@@ -88,13 +88,13 @@
   "pages": {
     "_index.md": {
       "citations": {
-        "0": "(Donovan \u0026#38; Kernighan, 2015)",
-        "1": "(Lovelace, 1843)"
+        "0": "[DoKe15]",
+        "1": "[Love43]"
       },
       "references": {
         "references": {
-          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
+          "go-book": "\u003cdiv class=\"csl-left-margin\"\u003e[DoKe15] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eDonovan, Alan A. A., and Kernighan, Brian W., \u003ci\u003eThe Go Programming Language\u003c/i\u003e, Addison-Wesley, 2015.\u003c/div\u003e",
+          "paper": "\u003cdiv class=\"csl-left-margin\"\u003e[Love43] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eLovelace, Ada, Notes on the Analytical Engine, in \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.\u003c/div\u003e"
         }
       },
       "cited": {
@@ -120,16 +120,16 @@
     },
     "advanced.md": {
       "citations": {
-        "0": "(Lovelace, 1843)",
-        "1": "(2015, p. 42)",
-        "14": "(Lovelace, 1843)",
-        "2": "(Donovan \u0026#38; Kernighan, 2015; Lovelace, 1843)",
-        "8": "(Donovan \u0026#38; Kernighan, 2015)"
+        "0": "[Love43]",
+        "1": "[DoKe15]",
+        "14": "[Love43]",
+        "2": "[Love43, DoKe15]",
+        "8": "[DoKe15]"
       },
       "references": {
         "references": {
-          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
+          "go-book": "\u003cdiv class=\"csl-left-margin\"\u003e[DoKe15] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eDonovan, Alan A. A., and Kernighan, Brian W., \u003ci\u003eThe Go Programming Language\u003c/i\u003e, Addison-Wesley, 2015.\u003c/div\u003e",
+          "paper": "\u003cdiv class=\"csl-left-margin\"\u003e[Love43] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eLovelace, Ada, Notes on the Analytical Engine, in \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.\u003c/div\u003e"
         }
       },
       "cited": {
@@ -184,14 +184,14 @@
       },
       "separate": {
         "2": [
-          "(Donovan \u0026#38; Kernighan, 2015)",
-          "(Lovelace, 1843)"
+          "[DoKe15]",
+          "[Love43]"
         ]
       },
       "orders": {
         "references": [
-          "go-book",
-          "paper"
+          "paper",
+          "go-book"
         ]
       }
     },
@@ -222,8 +222,8 @@
       "citations": {},
       "references": {
         "references": {
-          "go-book": "Donovan, A. A. A., \u0026#38; Kernighan, B. W. (2015). \u003ci\u003eThe Go Programming Language\u003c/i\u003e. Addison-Wesley.",
-          "paper": "Lovelace, A. (1843). Notes on the Analytical Engine. \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e."
+          "go-book": "\u003cdiv class=\"csl-left-margin\"\u003e[DoKe15] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eDonovan, Alan A. A., and Kernighan, Brian W., \u003ci\u003eThe Go Programming Language\u003c/i\u003e, Addison-Wesley, 2015.\u003c/div\u003e",
+          "paper": "\u003cdiv class=\"csl-left-margin\"\u003e[Love43] \u003c/div\u003e\u003cdiv class=\"csl-right-inline\"\u003eLovelace, Ada, Notes on the Analytical Engine, in \u003ci\u003eProceedings of the Example Conference\u003c/i\u003e.\u003c/div\u003e"
         }
       },
       "cited": {},
@@ -235,6 +235,6 @@
       }
     }
   },
-  "style": "apa",
+  "style": "american-mathematical-society-label",
   "bibliography": "references"
 }

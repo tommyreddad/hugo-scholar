@@ -8,21 +8,24 @@ import (
 	"github.com/tommyreddad/hugo-scholar/internal/scholar"
 )
 
+var (
+	source               = flag.String("source", "_bibliography", "directory containing BibTeX files")
+	output               = flag.String("output", "data/scholar.json", "generated Hugo data file")
+	bibliography         = flag.String("bibliography", "", "default bibliography file name (Hugo params.scholar.bibliography, or references)")
+	repository           = flag.String("repository", "", "directory containing files named after citation keys")
+	repositoryURL        = flag.String("repository-url", "", "public URL prefix for repository files")
+	repositoryDelimiter  = flag.String("repository-delimiter", ".", "delimiter between a citation key and a repository file suffix")
+	details              = flag.Bool("details", false, "generate one Hugo content page per entry in the default bibliography")
+	detailsDir           = flag.String("details-dir", "bibliography", "content directory and URL path for detail pages")
+	detailsPermalink     = flag.String("details-permalink", "", "detail page URL template, such as /bibliography/:year/:key/")
+	style                = flag.String("style", "", "local CSL style name or file (Hugo params.scholar.style, or american-mathematical-society-label); bundled: apa, ieee, modern-language-association, american-mathematical-society-label, american-mathematical-society-numeric, association-for-computing-machinery, springer-lecture-notes-in-computer-science; use basic to skip citeproc")
+	locale               = flag.String("locale", "en-US", "CSL locale")
+	allowLocaleOverrides = flag.Bool("allow-locale-overrides", false, "format each bibliography entry in its BibTeX language when present")
+	citeproc             = flag.String("citeproc", "citeproc", "path to the citeproc executable")
+	content              = flag.String("content", "content", "Hugo content directory to scan for page citations")
+)
+
 func main() {
-	source := flag.String("source", "_bibliography", "directory containing BibTeX files")
-	output := flag.String("output", "data/scholar.json", "generated Hugo data file")
-	bibliography := flag.String("bibliography", "", "default bibliography file name (Hugo params.scholar.bibliography, or references)")
-	repository := flag.String("repository", "", "directory containing files named after citation keys")
-	repositoryURL := flag.String("repository-url", "", "public URL prefix for repository files")
-	repositoryDelimiter := flag.String("repository-delimiter", ".", "delimiter between a citation key and a repository file suffix")
-	details := flag.Bool("details", false, "generate one Hugo content page per entry in the default bibliography")
-	detailsDir := flag.String("details-dir", "bibliography", "content directory and URL path for detail pages")
-	detailsPermalink := flag.String("details-permalink", "", "detail page URL template, such as /bibliography/:year/:key/")
-	style := flag.String("style", "", "local CSL style name or file (Hugo params.scholar.style, or apa); bundled: apa, ieee, modern-language-association; use basic to skip citeproc")
-	locale := flag.String("locale", "en-US", "CSL locale")
-	allowLocaleOverrides := flag.Bool("allow-locale-overrides", false, "format each bibliography entry in its BibTeX language when present")
-	citeproc := flag.String("citeproc", "citeproc", "path to the citeproc executable")
-	content := flag.String("content", "content", "Hugo content directory to scan for page citations")
 	flag.Parse()
 	if *bibliography == "" || *style == "" {
 		resolved, err := scholar.ReadSiteDefaults()

@@ -1,12 +1,13 @@
 # Hugo Scholar
 
 [![CI](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml/badge.svg)](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tommyreddad/hugo-scholar.svg)](https://pkg.go.dev/github.com/tommyreddad/hugo-scholar)
 [![Last commit](https://img.shields.io/github/last-commit/tommyreddad/hugo-scholar)](https://github.com/tommyreddad/hugo-scholar/commits)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 BibTeX citations and bibliographies for Hugo. A Go command generates the data; Hugo shortcodes render it.
 
-References use APA by default, formatted by [`citeproc`](https://github.com/jgm/citeproc). Use `--style basic` for formatting without `citeproc`. Hugo builds from the generated data and does not need `citeproc`.
+References use AMS label by default, formatted by [`citeproc`](https://github.com/jgm/citeproc). Use `--style basic` for formatting without `citeproc`. Hugo builds from the generated data and does not need `citeproc`.
 
 ## Try it
 
@@ -24,21 +25,18 @@ Example: [my publications page](https://tommy.reddad.net/publications/).
 
 ## Add it to a site
 
-Import the module in `hugo.toml`:
+From the site root, initialize Hugo Modules if the site does not already have a `go.mod`, then add Hugo Scholar at the published `v0.1.1` version:
+
+```sh
+hugo mod init example.com/my-site
+go get github.com/tommyreddad/hugo-scholar@v0.1.1
+```
+
+If the site already has a `go.mod`, skip `hugo mod init`. Commit the resulting `go.mod` and `go.sum` files. Import the module in `hugo.toml`:
 
 ```toml
 [[module.imports]]
 path = 'github.com/tommyreddad/hugo-scholar'
-```
-
-Add it to the site's `go.mod`:
-
-```go
-module example.com/my-site
-
-go 1.26
-
-require github.com/tommyreddad/hugo-scholar v0.1.1
 ```
 
 Put BibTeX in `_bibliography/references.bib` (or `.bibtex`). From the site root, run:
@@ -75,11 +73,23 @@ Bibliographies accept `sort_by`, `order`, `group_by`, `max`, `offset`, `remove_d
 
 CSL bibliographies use `ul` to avoid numbering citation labels twice. Basic bibliographies use `ol`. Override this with `params.scholar.bibliography_list_tag`. DOI and URL text links to valid HTTP(S) addresses supplied by the entry.
 
+Reference labels and text are separated by ordinary spaces and wrap together, without a hanging indent. Explicit CSL block and indented fields retain their layout in reference blocks. Inline `reference` shortcodes flatten these fields into spaced inline text while preserving emphasis and links. Block output uses a `div` when the CSL reference contains block elements, including when `reference_tagname` requests `span` or `p`. Custom bibliography templates can use the `scholar/reference_content.html` partial with `dict "reference" .reference` (and `"inline" true` for inline output).
+
 Use `separate_links=true` to link each key in a grouped citation. For multiple lists on a page, use matching `prefix` values on citations and bibliographies.
 
 ## Citation styles
 
-Three CSL styles are included as plain files (about 148 KB total): `apa` (default), `ieee`, and `modern-language-association` (MLA). Style processing works offline once the generator and `citeproc` are installed.
+Seven CSL styles are bundled as plain files (about 172 KB total). Style processing works offline once the generator and `citeproc` are installed.
+
+| Style name                                      | Format                             |
+| ----------------------------------------------- | ---------------------------------- |
+| `apa`                                           | American Psychological Association |
+| `ieee`                                          | IEEE                               |
+| `modern-language-association`                   | MLA                                |
+| `association-for-computing-machinery`           | ACM                                |
+| `springer-lecture-notes-in-computer-science`    | Springer LNCS                      |
+| `american-mathematical-society-numeric`         | AMS, numbered citations            |
+| `american-mathematical-society-label` (default) | AMS, citation labels               |
 
 Set your site's default in `hugo.toml`:
 
@@ -139,17 +149,17 @@ The default style must define a bibliography. Styles that define only notes caus
 
 ## Generator options
 
-| Option                     | Default                        | Purpose                                               |
-| -------------------------- | ------------------------------ | ----------------------------------------------------- |
-| `--source`                 | `_bibliography`                | BibTeX file or directory                              |
-| `--output`                 | `data/scholar.json`            | Generated Hugo data                                   |
-| `--bibliography`           | Hugo config, then `references` | Default BibTeX file name                              |
-| `--style`                  | Hugo config, then `apa`        | Local CSL name, `.csl` path, or `basic`               |
-| `--locale`                 | `en-US`                        | CSL language                                          |
-| `--allow-locale-overrides` | false                          | Use an entry's BibTeX `language` for its reference    |
-| `--citeproc`               | `citeproc`                     | Path to the citation processor                        |
-| `--repository`             | unset                          | Attachment directory; files start with a citation key |
-| `--details`                | false                          | Generate a page for each entry                        |
+| Option                     | Default                                                 | Purpose                                               |
+| -------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| `--source`                 | `_bibliography`                                         | BibTeX file or directory                              |
+| `--output`                 | `data/scholar.json`                                     | Generated Hugo data                                   |
+| `--bibliography`           | Hugo config, then `references`                          | Default BibTeX file name                              |
+| `--style`                  | Hugo config, then `american-mathematical-society-label` | Local CSL name, `.csl` path, or `basic`               |
+| `--locale`                 | `en-US`                                                 | CSL language                                          |
+| `--allow-locale-overrides` | false                                                   | Use an entry's BibTeX `language` for its reference    |
+| `--citeproc`               | `citeproc`                                              | Path to the citation processor                        |
+| `--repository`             | unset                                                   | Attachment directory; files start with a citation key |
+| `--details`                | false                                                   | Generate a page for each entry                        |
 
 For all options, run `go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar --help`. Entry locale overrides affect references only; citations use the site locale.
 
@@ -160,12 +170,12 @@ Shortcode options can also be set under `[params.scholar]` in `hugo.toml`:
 ```toml
 [params.scholar]
 bibliography = 'references'
-style = 'apa'
+style = 'american-mathematical-society-label'
 sort_by = 'name,year'
 order = 'ascending,descending'
 ```
 
-The generator reads `params.scholar.bibliography` and `params.scholar.style` through `hugo config --format json`, including configuration directories and environment overrides. CLI flags take precedence. Supply both `--bibliography` and `--style` to skip reading Hugo configuration. Without site configuration, the defaults are `references` and `apa`.
+The generator reads `params.scholar.bibliography` and `params.scholar.style` through `hugo config --format json`, including configuration directories and environment overrides. CLI flags take precedence. Supply both `--bibliography` and `--style` to skip reading Hugo configuration. Without site configuration, the defaults are `references` and `american-mathematical-society-label`.
 
 Templates use the generated style. The generated default bibliography must match the site configuration; rerun the generator after changing it.
 
@@ -189,15 +199,10 @@ Integration tests check the generator and Hugo output. Tests skip when a require
 ### Updating bundled styles
 
 1. Review a CSL [`v1.0.2` checkout](https://github.com/citation-style-language/styles/tree/v1.0.2) and record its full commit SHA.
-2. Copy `apa.csl`, `ieee.csl`, and `modern-language-association.csl` into `internal/scholar/styles/`, preserving the XML and attribution.
-3. Update the commit, SHA-256 checksums, and byte counts in [manifest.json](internal/scholar/styles/manifest.json). Calculate them from the repository root:
+2. Copy the bundled CSL files into `internal/scholar/styles/`, preserving the XML and attribution.
+3. Record the upstream commit in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-```sh
-sha256sum internal/scholar/styles/*.csl
-wc -c internal/scholar/styles/*.csl
-```
-
-Run `make generate` and `HUGO_SCHOLAR_REQUIRE_INTEGRATION=1 make check`. Review and commit the styles, manifest, and changed example output. Tests check file hashes, offline style lookup, URL rejection, and `citeproc` formatting.
+Run `make generate` and `HUGO_SCHOLAR_REQUIRE_INTEGRATION=1 make check`. Review and commit the styles, notices, and changed example output. Tests check offline style lookup, URL rejection, and `citeproc` formatting.
 
 ## License
 

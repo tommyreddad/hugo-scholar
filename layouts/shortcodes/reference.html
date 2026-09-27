@@ -19,7 +19,11 @@
         {{- end -}}
       {{- end -}}
     {{- end -}}
-    {{- if $.Get "block" -}}<p>{{ $reference | safeHTML }}</p>{{- else -}}{{ $reference | safeHTML }}{{- end -}}
+    {{- if $.Get "block" -}}
+      <div class="scholar-reference">{{ partial "scholar/reference_content.html" (dict "reference" $reference) }}</div>
+    {{- else -}}
+      {{- partial "scholar/reference_content.html" (dict "reference" $reference "inline" true) -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 {{- if not $found -}}{{ site.Params.scholar.missing_reference | default "(missing reference)" }}{{ end -}}

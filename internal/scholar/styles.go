@@ -212,5 +212,5 @@ func findStyle(style, relativeTo string) (styleSource, error) {
 			return styleSource{}, fmt.Errorf("read bundled CSL style %q: %w", style, err)
 		}
 	}
-	return styleSource{}, fmt.Errorf("CSL style %q not found; searched %q and bundled styles (apa, ieee, modern-language-association); obtain the CSL file independently and put it in styles/ or CSL_STYLE_DIR, or pass its local path", style, searched)
+	return styleSource{}, fmt.Errorf("CSL style %q not found; searched %q and bundled styles (apa, ieee, modern-language-association, american-mathematical-society-label, american-mathematical-society-numeric, association-for-computing-machinery, springer-lecture-notes-in-computer-science); obtain the CSL file independently and put it in styles/ or CSL_STYLE_DIR, or pass its local path", style, searched)
 }

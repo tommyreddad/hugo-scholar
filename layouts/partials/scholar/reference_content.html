@@ -1,0 +1,14 @@
+{{- /* Use real spaces between CSL fields; labels and text share the same line flow. */ -}}
+{{- $reference := .reference -}}
+{{- if in $reference "<div" -}}
+  {{- $reference = replaceRE `<div\b([^>]*)>` ` <span${1}>` $reference -}}
+  {{- $reference = strings.TrimSpace (replace $reference "</div>" "</span> ") -}}
+  {{- $reference = replace $reference "</span>  <span" "</span> <span" -}}
+  {{- if not .inline -}}
+    {{- /* Preserve explicit block and indent fields requested by custom styles. */ -}}
+    {{- $reference = replace $reference `<span class="csl-block">` `<span class="csl-block" style="display:block">` -}}
+    {{- $reference = replace $reference `<span class="csl-indent">` `<span class="csl-indent" style="display:block;margin-inline-start:2em">` -}}
+    {{- $reference = printf `<div class="scholar-csl">%s</div>` $reference -}}
+  {{- end -}}
+{{- end -}}
+{{- return ($reference | safeHTML) -}}

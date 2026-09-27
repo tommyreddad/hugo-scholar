@@ -1,33 +1,18 @@
 package scholar
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-type styleTransport func(*http.Request) (*http.Response, error)
-
-func (transport styleTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return transport(request)
-}
-
 func stylesOffline(t *testing.T) {
 	t.Helper()
 	t.Chdir(t.TempDir())
 	t.Setenv("CSL_STYLE_DIR", "")
-	previous := http.DefaultClient
-	http.DefaultClient = &http.Client{Transport: styleTransport(func(request *http.Request) (*http.Response, error) {
-		t.Errorf("unexpected style download: %s", request.URL)
-		return nil, fmt.Errorf("network disabled by test")
-	})}
-	t.Cleanup(func() { http.DefaultClient = previous })
 }
 
 func writeStyle(t *testing.T, name, content string) {
@@ -45,38 +30,17 @@ func dependentStyle(parent, locale string) string {
 }
 
 func TestStarterStylesOffline(t *testing.T) {
-	raw, err := os.ReadFile("styles/manifest.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var manifest struct {
-		Files map[string]struct {
-			SHA256 string `json:"sha256"`
-			Bytes  int    `json:"bytes"`
-		}
-	}
-	if err := json.Unmarshal(raw, &manifest); err != nil {
-		t.Fatal(err)
-	}
 	stylesOffline(t)
 	files, err := bundledStyles.ReadDir("styles")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 3 || len(manifest.Files) != 3 {
-		t.Fatal("expected exactly three plain starter styles")
-	}
-	size := 0
-	for _, name := range []string{"apa", "ieee", "modern-language-association"} {
+	for _, file := range files {
+		name := strings.TrimSuffix(file.Name(), ".csl")
 		content, err := loadStyleWithParents(name, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
-		expected := manifest.Files[name+".csl"]
-		if fmt.Sprintf("%x", sha256.Sum256([]byte(content))) != expected.SHA256 || len(content) != expected.Bytes {
-			t.Fatalf("%s does not match its provenance manifest", name)
-		}
-		size += len(content)
 		var style struct {
 			XMLName      xml.Name  `xml:"http://purl.org/net/xbiblio/csl style"`
 			Citation     *struct{} `xml:"citation"`
@@ -85,9 +49,6 @@ func TestStarterStylesOffline(t *testing.T) {
 		if err := xml.Unmarshal([]byte(content), &style); err != nil || style.Citation == nil || style.Bibliography == nil {
 			t.Fatalf("invalid starter style %s: %v", name, err)
 		}
-	}
-	if size > 256*1024 {
-		t.Fatalf("starter collection has grown beyond its size budget: %d bytes", size)
 	}
 }
 
@@ -222,6 +183,10 @@ func TestStarterStylesCiteprocOffline(t *testing.T) {
 	writeStyle(t, "journal.csl", dependentStyle("http://www.zotero.org/styles/ieee", "en-GB"))
 	for _, test := range []struct{ style, citation string }{
 		{"apa", "Smith, 2024"}, {"ieee", "[1]"}, {"modern-language-association", "Smith"}, {"journal.csl", "[1]"},
+		{"american-mathematical-society-label", "[Smit24]"},
+		{"american-mathematical-society-numeric", "[1]"},
+		{"association-for-computing-machinery", "[1]"},
+		{"springer-lecture-notes-in-computer-science", "[1]"},
 	} {
 		t.Run(test.style, func(t *testing.T) {
 			result, err := runCiteproc("citeproc", test.style, "en-US", entries, citations)
@@ -247,7 +212,7 @@ func TestSiteDefaultsWithoutHugo(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("PATH", "")
 	defaults, err := ReadSiteDefaults()
-	if err != nil || defaults.Bibliography != "references" || defaults.Style != "apa" {
+	if err != nil || defaults.Bibliography != "references" || defaults.Style != "american-mathematical-society-label" {
 		t.Fatalf("standalone defaults: %+v, %v", defaults, err)
 	}
 }

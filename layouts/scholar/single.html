@@ -5,7 +5,7 @@
   {{- $entry := partial "scholar/lookup.html" (dict "file" (partial "scholar/default_bibliography.html" .) "key" .Params.scholar_key) -}}
   <main class="scholar-details">
     <h1>{{ .Title }}</h1>
-    <p>{{ $entry.reference | safeHTML }}</p>
+    <div class="scholar-reference">{{ partial "scholar/reference_content.html" (dict "reference" $entry.reference) }}</div>
     {{ with $entry.abstract }}<h2>Abstract</h2><p>{{ . }}</p>{{ end }}
     {{ with $entry.links }}<h2>Files</h2><ul>{{ range $name, $url := . }}<li><a href="{{ partial "scholar/url.html" $url }}">{{ $name }}</a></li>{{ end }}</ul>{{ end }}
     <h2>BibTeX</h2><pre><code>{{ $entry.bibtex }}</code></pre>

@@ -19,6 +19,28 @@ func requireIntegrationTool(t *testing.T, name string) {
 	}
 }
 
+const integrationBibliography = `@book{a,author={Alpha, Ann},title={First},year=2020}
+@book{b,author={Beta, Bob},title={Second},year=2021}
+@book{c,author={Gamma, Gil},title={Third},year=2022}`
+
+type integrationCase struct {
+	name          string
+	bib           string
+	page          string
+	style         string
+	useSiteStyle  bool
+	needsCiteproc bool
+	generateError string
+	config        string
+	baseURL       string
+	files         map[string]string
+	flags         []string
+	want          []string
+	absent        []string
+	ordered       []string
+	countItems    int // -1 means no count assertion
+}
+
 func TestGeneratorHugoIntegration(t *testing.T) {
 	requireIntegrationTool(t, "hugo")
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
@@ -35,32 +57,14 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const bib = `@book{a,author={Alpha, Ann},title={First},year=2020}
-@book{b,author={Beta, Bob},title={Second},year=2021}
-@book{c,author={Gamma, Gil},title={Third},year=2022}`
 	const duplicates = `@book{a,title={Same},year=2020}
 @book{b,title={Same},year=2020}`
-	tests := []struct {
-		name          string
-		bib           string
-		page          string
-		style         string
-		useSiteStyle  bool
-		needsCiteproc bool
-		generateError string
-		config        string
-		baseURL       string
-		files         map[string]string
-		flags         []string
-		want          []string
-		absent        []string
-		ordered       []string
-		countItems    int // -1 means no count assertion
-	}{
+	tests := []integrationCase{
 		{
-			name: "default APA", useSiteStyle: true,
-			page: `{{< cite "a" >}} {{< bibliography cited=true >}}`,
-			want: []string{`href="#a">(Alpha, 2020)</a>`}, countItems: 1,
+			name: "default AMS label", useSiteStyle: true,
+			page:    `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited=true >}}`,
+			want:    []string{`href="#b">[Beta21]</a>`, `href="#a">[Alph20]</a>`},
+			ordered: []string{`id="b"`, `id="a"`}, countItems: 2,
 		},
 		{
 			name: "Hugo style default", useSiteStyle: true,
@@ -132,27 +136,12 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 			name: "author whitespace", style: "apa", bib: "@book{a,author={Alpha, Ann and\nBeta, Bob},title={Book},year=2024}",
 			want: []string{"Alpha, A.,", "Beta, B."}, absent: []string{"Beta., Bob."}, countItems: 1,
 		},
-		{
-			name: "Hugo bibliography default", style: "apa", config: "[params.scholar]\nbibliography = 'books'\n",
-			page:  `{{< cite "b" >}} {{< bibliography cited=true >}}`,
-			files: map[string]string{"_bibliography/books.bib": `@book{b,author={Yves, Y},title={Other},year=2001}`},
-			want:  []string{`href="#b">(Yves, 2001)</a>`, "Yves, Y. (2001)"}, absent: []string{"Beta"}, countItems: 1,
-		},
+
 		{
 			name: "URL syntax", style: "apa", bib: `@book{a,title={URL},url={https://example.org/~alice/paper?x=1\&y=2}}`,
 			want: []string{`href="https://example.org/~alice/paper?x=1&amp;y=2"`}, absent: []string{"/ alice"}, countItems: 1,
 		},
-		{
-			name: "subdirectory links", baseURL: "https://example.org/project/", flags: []string{"--details", "--repository", "static/repository"},
-			files: map[string]string{"static/repository/a.pdf": "attachment"},
-			page:  `{{< cite_details "a" >}} {{< details_link "a" >}} {{< bibliography >}}`,
-			want:  []string{`href="/project/bibliography/a/"`}, absent: []string{`href="/bibliography/`}, countItems: 3,
-		},
-		{
-			name: "external attachments", baseURL: "https://example.org/project/",
-			flags: []string{"--details", "--repository", "static/repository", "--repository-url", "https://files.example.org/papers"},
-			files: map[string]string{"static/repository/a.pdf": "attachment"}, countItems: 3,
-		},
+
 		{
 			name: "numeric bibliography order", style: "styles/numeric.csl",
 			page:    `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography >}}`,
@@ -184,7 +173,7 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 			want: []string{"(unknown)"}, countItems: 3,
 		},
 		{
-			name: "nonnumeric year", bib: bib + ` @book{upcoming,title={Upcoming},year={in press}}`,
+			name: "nonnumeric year", bib: integrationBibliography + ` @book{upcoming,title={Upcoming},year={in press}}`,
 			page: `{{< bibliography query="@book[year>=2000]" >}}`, absent: []string{"Upcoming"}, countItems: 3,
 		},
 		{
@@ -210,113 +199,201 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if test.needsCiteproc || test.useSiteStyle || (test.style != "" && test.style != "basic") {
-				requireIntegrationTool(t, "citeproc")
-			}
-			root := t.TempDir()
-			page := firstNonempty(test.page, `{{< bibliography >}}`)
-			if !strings.HasPrefix(page, "---") {
-				page = "---\ntitle: Review\n---\n\n" + page
-			}
-			files := map[string]string{
-				"go.mod":             "module integration\n\ngo 1.26\n\nrequire github.com/tommyreddad/hugo-scholar v0.1.1\nreplace github.com/tommyreddad/hugo-scholar => " + filepath.ToSlash(repo) + "\n",
-				"hugo.toml":          "baseURL = '" + firstNonempty(test.baseURL, "https://example.org/") + "'\ndisableKinds = ['taxonomy', 'term', 'RSS', 'sitemap']\n[[module.imports]]\npath = 'github.com/tommyreddad/hugo-scholar'\n" + test.config,
-				"layouts/index.html": "{{ .Content }}", "layouts/_default/single.html": "{{ .Content }}",
-				"layouts/shortcodes/wrap.html": "<div>{{ .Inner }}</div>",
-				"_bibliography/references.bib": firstNonempty(test.bib, bib),
-				"content/_index.md":            page, "styles/numeric.csl": string(numeric),
-			}
-			for name, content := range test.files {
-				files[name] = content
-			}
-			for name, content := range files {
-				path := filepath.Join(root, filepath.FromSlash(name))
-				if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			var args []string
-			if !test.useSiteStyle {
-				args = []string{"--style", firstNonempty(test.style, "basic")}
-			}
-			generate := exec.Command(binary, append(args, test.flags...)...)
-			generate.Dir = root
-			generationOutput, generationErr := generate.CombinedOutput()
-			if test.generateError != "" {
-				if generationErr == nil || !strings.Contains(string(generationOutput), test.generateError) {
-					t.Fatalf("expected generation error %q: %v\n%s", test.generateError, generationErr, generationOutput)
-				}
-				return
-			}
-			if generationErr != nil {
-				t.Fatalf("generate: %v\n%s", generationErr, generationOutput)
-			}
-			hugo := exec.Command("hugo")
-			hugo.Dir = root
-			if output, err := hugo.CombinedOutput(); err != nil {
-				t.Fatalf("hugo: %v\n%s", err, output)
-			}
+			runHugoIntegration(t, binary, repo, numeric, test)
+		})
+	}
+
+	// Exercise CSL layout fields without requiring citeproc in CI.
+	t.Run("CSL display fields", func(t *testing.T) {
+		runHugoIntegration(t, binary, repo, numeric, integrationCase{
+			files: map[string]string{"layouts/index.html": `
+{{ $reference := ` + "`" + `<div class="csl-left-margin">[1]</div><div class="csl-right-inline"><i>Title</i> <a href="https://example.org/?a=1&amp;b=2">Link</a><div class="csl-block">Block</div><div class="csl-indent">Indented</div>End</div>` + "`" + ` }}
+<p>Before {{ partial "scholar/reference_content.html" (dict "reference" $reference "inline" true) }} After.</p>
+{{ partial "scholar/reference.html" (dict "entry" (dict "key" "a") "reference" $reference "referenceTag" "p" "prefix" "") }}
+`},
+			want: []string{
+				`<p>Before <span class="csl-left-margin">[1]</span> <span class="csl-right-inline">`,
+				`</a> <span class="csl-block">Block</span> <span class="csl-indent">Indented</span> End</span> After.</p>`,
+				`<div id="a"><div class="scholar-csl"`,
+				`<div class="scholar-csl"><span class="csl-left-margin">[1]</span> <span class="csl-right-inline">`,
+				`style="display:block"`, `style="display:block;margin-inline-start:2em"`,
+				`<i>Title</i> <a href="https://example.org/?a=1&amp;b=2">Link</a>`,
+			},
+			absent: []string{`<p id="a">`, `<span id="a">`, `float:`, `margin-inline-end:`},
+		})
+	})
+
+	styles, err := bundledStyles.ReadDir("styles")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, style := range styles {
+		t.Run("reference rendering/"+style.Name(), func(t *testing.T) {
+			root := runHugoIntegration(t, binary, repo, numeric, integrationCase{
+				style: strings.TrimSuffix(style.Name(), ".csl"),
+				page:  "Before {{< reference \"a\" >}} After.\n\n{{< reference key=\"a\" block=true >}}\n\n{{< bibliography >}}",
+				flags: []string{"--details"}, countItems: 3,
+				want:   []string{`<div class="scholar-reference">`},
+				absent: []string{`<p><div`, `<span id="a"><div`},
+			})
 			output, err := os.ReadFile(filepath.Join(root, "public", "index.html"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			html := string(output)
-			for _, want := range test.want {
-				if !strings.Contains(html, want) {
-					t.Errorf("missing %q in:\n%s", want, html)
-				}
+			_, after, found := strings.Cut(string(output), "<p>Before ")
+			inline, _, ended := strings.Cut(after, " After.</p>")
+			if !found || !ended || strings.Contains(inline, "<div") || !strings.Contains(inline, "First") {
+				t.Fatalf("reference interrupted its paragraph: %s", output)
 			}
-			for _, absent := range test.absent {
-				if strings.Contains(html, absent) {
-					t.Errorf("unexpected %q in:\n%s", absent, html)
-				}
+			details, err := os.ReadFile(filepath.Join(root, "public", "bibliography", "a", "index.html"))
+			if err != nil {
+				t.Fatal(err)
 			}
-			position := -1
-			for _, want := range test.ordered {
-				index := strings.Index(html, want)
-				if index <= position {
-					t.Fatalf("missing or out of order %q in:\n%s", want, html)
-				}
-				position = index
-			}
-			if test.countItems >= 0 && strings.Count(html, "<li>") != test.countItems {
-				t.Errorf("expected %d bibliography items in:\n%s", test.countItems, html)
-			}
-			if strings.Contains(test.name, "attachments") || test.name == "subdirectory links" {
-				details, err := os.ReadFile(filepath.Join(root, "public", "bibliography", "a", "index.html"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				want := `href="/project/repository/a.pdf"`
-				if test.name == "external attachments" {
-					want = `href="https://files.example.org/papers/a.pdf"`
-				}
-				if !strings.Contains(string(details), want) {
-					t.Errorf("wrong attachment URL: %s", details)
-				}
-			}
-			if test.name == "Hugo bibliography default" {
-				data, err := os.ReadFile(filepath.Join(root, "data", "scholar.json"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				var generated struct{ Bibliography string }
-				if err := json.Unmarshal(data, &generated); err != nil || generated.Bibliography != "books" {
-					t.Fatalf("default not persisted: %s (%v)", data, err)
-				}
-				config := strings.Replace(files["hugo.toml"], "bibliography = 'books'", "bibliography = 'references'", 1)
-				if err := os.WriteFile(filepath.Join(root, "hugo.toml"), []byte(config), 0644); err != nil {
-					t.Fatal(err)
-				}
-				command := exec.Command("hugo")
-				command.Dir = root
-				if output, err := command.CombinedOutput(); err == nil || !strings.Contains(string(output), "differs from generated bibliography") {
-					t.Fatalf("configuration mismatch not rejected: %v\n%s", err, output)
-				}
+			if !strings.Contains(string(details), `<div class="scholar-reference">`) || strings.Contains(string(details), "<p><div") {
+				t.Fatalf("invalid detail reference block: %s", details)
 			}
 		})
 	}
+
+	t.Run("subdirectory links", func(t *testing.T) {
+		root := runHugoIntegration(t, binary, repo, numeric, integrationCase{
+			baseURL: "https://example.org/project/", flags: []string{"--details", "--repository", "static/repository"},
+			files: map[string]string{"static/repository/a.pdf": "attachment"},
+			page:  `{{< cite_details "a" >}} {{< details_link "a" >}} {{< bibliography >}}`,
+			want:  []string{`href="/project/bibliography/a/"`}, absent: []string{`href="/bibliography/`}, countItems: 3,
+		})
+		details, err := os.ReadFile(filepath.Join(root, "public", "bibliography", "a", "index.html"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(details), `href="/project/repository/a.pdf"`) {
+			t.Errorf("wrong attachment URL: %s", details)
+		}
+	})
+
+	t.Run("external attachments", func(t *testing.T) {
+		root := runHugoIntegration(t, binary, repo, numeric, integrationCase{
+			baseURL: "https://example.org/project/",
+			flags:   []string{"--details", "--repository", "static/repository", "--repository-url", "https://files.example.org/papers"},
+			files:   map[string]string{"static/repository/a.pdf": "attachment"}, countItems: 3,
+		})
+		details, err := os.ReadFile(filepath.Join(root, "public", "bibliography", "a", "index.html"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(details), `href="https://files.example.org/papers/a.pdf"`) {
+			t.Errorf("wrong attachment URL: %s", details)
+		}
+	})
+
+	t.Run("Hugo bibliography default", func(t *testing.T) {
+		root := runHugoIntegration(t, binary, repo, numeric, integrationCase{
+			style: "apa", config: "[params.scholar]\nbibliography = 'books'\n",
+			page:  `{{< cite "b" >}} {{< bibliography cited=true >}}`,
+			files: map[string]string{"_bibliography/books.bib": `@book{b,author={Yves, Y},title={Other},year=2001}`},
+			want:  []string{`href="#b">(Yves, 2001)</a>`, "Yves, Y. (2001)"}, absent: []string{"Beta"}, countItems: 1,
+		})
+		data, err := os.ReadFile(filepath.Join(root, "data", "scholar.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var generated struct{ Bibliography string }
+		if err := json.Unmarshal(data, &generated); err != nil || generated.Bibliography != "books" {
+			t.Fatalf("default not persisted: %s (%v)", data, err)
+		}
+		configPath := filepath.Join(root, "hugo.toml")
+		config, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		changed := strings.Replace(string(config), "bibliography = 'books'", "bibliography = 'references'", 1)
+		if err := os.WriteFile(configPath, []byte(changed), 0644); err != nil {
+			t.Fatal(err)
+		}
+		command := exec.Command("hugo")
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err == nil || !strings.Contains(string(output), "differs from generated bibliography") {
+			t.Fatalf("configuration mismatch not rejected: %v\n%s", err, output)
+		}
+	})
+}
+
+func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test integrationCase) string {
+	t.Helper()
+	if test.needsCiteproc || test.useSiteStyle || (test.style != "" && test.style != "basic") {
+		requireIntegrationTool(t, "citeproc")
+	}
+	root := t.TempDir()
+	page := firstNonempty(test.page, `{{< bibliography >}}`)
+	if !strings.HasPrefix(page, "---") {
+		page = "---\ntitle: Review\n---\n\n" + page
+	}
+	files := map[string]string{
+		"go.mod":             "module integration\n\ngo 1.26\n\nrequire github.com/tommyreddad/hugo-scholar v0.1.1\nreplace github.com/tommyreddad/hugo-scholar => " + filepath.ToSlash(repo) + "\n",
+		"hugo.toml":          "baseURL = '" + firstNonempty(test.baseURL, "https://example.org/") + "'\ndisableKinds = ['taxonomy', 'term', 'RSS', 'sitemap']\n[[module.imports]]\npath = 'github.com/tommyreddad/hugo-scholar'\n" + test.config,
+		"layouts/index.html": "{{ .Content }}", "layouts/_default/single.html": "{{ .Content }}",
+		"layouts/shortcodes/wrap.html": "<div>{{ .Inner }}</div>",
+		"_bibliography/references.bib": firstNonempty(test.bib, integrationBibliography),
+		"content/_index.md":            page, "styles/numeric.csl": string(numeric),
+	}
+	for name, content := range test.files {
+		files[name] = content
+	}
+	for name, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var args []string
+	if !test.useSiteStyle {
+		args = []string{"--style", firstNonempty(test.style, "basic")}
+	}
+	generate := exec.Command(binary, append(args, test.flags...)...)
+	generate.Dir = root
+	generationOutput, generationErr := generate.CombinedOutput()
+	if test.generateError != "" {
+		if generationErr == nil || !strings.Contains(string(generationOutput), test.generateError) {
+			t.Fatalf("expected generation error %q: %v\n%s", test.generateError, generationErr, generationOutput)
+		}
+		return root
+	}
+	if generationErr != nil {
+		t.Fatalf("generate: %v\n%s", generationErr, generationOutput)
+	}
+	hugo := exec.Command("hugo")
+	hugo.Dir = root
+	if output, err := hugo.CombinedOutput(); err != nil {
+		t.Fatalf("hugo: %v\n%s", err, output)
+	}
+	output, err := os.ReadFile(filepath.Join(root, "public", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(output)
+	for _, want := range test.want {
+		if !strings.Contains(html, want) {
+			t.Errorf("missing %q in:\n%s", want, html)
+		}
+	}
+	for _, absent := range test.absent {
+		if strings.Contains(html, absent) {
+			t.Errorf("unexpected %q in:\n%s", absent, html)
+		}
+	}
+	position := -1
+	for _, want := range test.ordered {
+		index := strings.Index(html, want)
+		if index <= position {
+			t.Fatalf("missing or out of order %q in:\n%s", want, html)
+		}
+		position = index
+	}
+	if test.countItems >= 0 && strings.Count(html, "<li>") != test.countItems {
+		t.Errorf("expected %d bibliography items in:\n%s", test.countItems, html)
+	}
+	return root
 }
