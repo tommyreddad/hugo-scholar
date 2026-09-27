@@ -8,14 +8,11 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go: ["1.26", "1.27"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.26"
           check-latest: true
       - uses: peaceiris/actions-hugo@v3
         with:
