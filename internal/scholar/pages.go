@@ -92,9 +92,17 @@ func renderPages(options Options, data *Data) error {
 		}
 		grouped := map[string][]shortcode{}
 		stylesByFile := map[string]map[string]bool{}
+		fullBibliographies := map[string]map[string]bool{}
 		active := map[string][]string{}
 		for _, call := range scanShortcodes(body) {
 			file := firstNonempty(call.Args["file"], options.DefaultBibliography, "references")
+			style := firstNonempty(call.Args["style"], options.Style)
+			if (call.Name == "bibliography" && call.Args["cited"] != "true" && call.Args["cited_in_order"] != "true") || (call.Name == "reference" && style != options.Style) {
+				if fullBibliographies[file] == nil {
+					fullBibliographies[file] = map[string]bool{}
+				}
+				fullBibliographies[file][style] = true
+			}
 			if style := call.Args["style"]; style != "" && style != options.Style && style != "basic" && (call.Name == "cite" || call.Name == "quote" || call.Name == "bibliography" || call.Name == "reference") {
 				if stylesByFile[file] == nil {
 					stylesByFile[file] = map[string]bool{}
@@ -157,14 +165,6 @@ func renderPages(options Options, data *Data) error {
 				citations = append(citations, citation)
 				validCalls = append(validCalls, call)
 			}
-			// Include uncited entries after real citations so the processor can
-			// produce a full bibliography when a page asks for one.
-			for _, record := range records {
-				key := record.Entry["key"]
-				if !cited[key] {
-					citations = append(citations, cslCitation{Items: []cslCitationItem{{ID: key}}})
-				}
-			}
 			var styles []string
 			if options.Style != "" && options.Style != "basic" {
 				styles = append(styles, options.Style)
@@ -180,23 +180,37 @@ func renderPages(options Options, data *Data) error {
 					break
 				}
 			}
-			var singles []cslCitation
-			if multiple {
-				for _, citation := range citations {
-					for _, item := range citation.Items {
-						singles = append(singles, cslCitation{Items: []cslCitationItem{item}})
+			for _, style := range styles {
+				styleCitations := append([]cslCitation(nil), citations...)
+				styleRecords := records
+				if fullBibliographies[file][style] {
+					// A full bibliography needs every entry. Cited-only pages must
+					// exclude uncited entries before citeproc assigns numbers.
+					for _, record := range records {
+						key := record.Entry["key"]
+						if !cited[key] {
+							styleCitations = append(styleCitations, cslCitation{Items: []cslCitationItem{{ID: key}}})
+						}
+					}
+				} else {
+					styleRecords = nil
+					for _, record := range records {
+						if cited[record.Entry["key"]] {
+							styleRecords = append(styleRecords, record)
+						}
 					}
 				}
-			}
-			for _, style := range styles {
-				result, err := runCiteproc(options.CiteprocPath, style, options.Locale, records, citations)
+				if len(styleCitations) == 0 {
+					continue
+				}
+				result, err := runCiteproc(options.CiteprocPath, style, options.Locale, styleRecords, styleCitations)
 				if err != nil {
 					return fmt.Errorf("%s: style %q: %w", filename, style, err)
 				}
-				if err := applyLocaleOverrides(options, style, records, citations, &result); err != nil {
+				if err := applyLocaleOverrides(options, style, styleRecords, styleCitations, &result); err != nil {
 					return fmt.Errorf("%s: style %q: %w", filename, style, err)
 				}
-				linkifyCSLReferences(&result, records)
+				linkifyCSLReferences(&result, styleRecords)
 				citationOutput := page.Citations
 				referenceOutput := page.References
 				separateOutput := page.Separate
@@ -217,7 +231,13 @@ func renderPages(options Options, data *Data) error {
 					citationOutput[call.ID] = result.Citations[index]
 				}
 				if multiple {
-					individual, err := runCiteproc(options.CiteprocPath, style, options.Locale, records, singles)
+					var singles []cslCitation
+					for _, citation := range styleCitations {
+						for _, item := range citation.Items {
+							singles = append(singles, cslCitation{Items: []cslCitationItem{item}})
+						}
+					}
+					individual, err := runCiteproc(options.CiteprocPath, style, options.Locale, styleRecords, singles)
 					if err != nil {
 						return fmt.Errorf("%s: separate citations with style %q: %w", filename, style, err)
 					}

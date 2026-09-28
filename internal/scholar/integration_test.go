@@ -27,6 +27,7 @@ type integrationCase struct {
 	name          string
 	bib           string
 	page          string
+	pagePath      string
 	style         string
 	useSiteStyle  bool
 	needsCiteproc bool
@@ -65,6 +66,31 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 			page:    `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited=true >}}`,
 			want:    []string{`href="#b">[1]</a>`, `href="#a">[2]</a>`},
 			ordered: []string{`id="b"`, `id="a"`}, countItems: 2,
+		},
+		{
+			name: "single late entry on post", style: "association-for-computing-machinery",
+			bib: `@book{a,author={Alpha, Ann},title={First},year=2020}
+@book{b,author={Beta, Bob},title={Second},year=2020}
+@book{c,author={Charlie, Cal},title={Third},year=2020}
+@book{d,author={Delta, Dan},title={Fourth},year=2020}
+@book{e,author={Echo, Ed},title={Fifth},year=2020}
+@book{f,author={Foxtrot, Fran},title={Sixth},year=2020}
+@book{g,author={Golf, Gil},title={Seventh},year=2020}
+@book{h,author={Hotel, Hal},title={Eighth},year=2020}
+@book{devroye2019discrete,author={Zulu, Zoe},title={Discrete},year=2019}`,
+			pagePath: "posts/example.md",
+			page: `{{< cite "devroye2019discrete" >}}
+
+{{< bibliography cited=true >}}`,
+			want:       []string{`href="#devroye2019discrete">[1]</a>`, `id="devroye2019discrete"><div class="scholar-csl"><span class="csl-left-margin">[1]</span>`},
+			absent:     []string{`[9]`},
+			countItems: 1,
+		},
+		{
+			name: "ACM full bibliography retains uncited entries", style: "association-for-computing-machinery",
+			page:       `{{< cite "b" >}} {{< bibliography >}}`,
+			want:       []string{`href="#b">[2]</a>`, `id="a"`, `id="b"`, `id="c"`},
+			countItems: 3,
 		},
 		{
 			name: "Hugo style default", useSiteStyle: true,
@@ -332,9 +358,9 @@ func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test 
 		"go.mod":             "module integration\n\ngo 1.26\n\nrequire github.com/tommyreddad/hugo-scholar v0.1.3\nreplace github.com/tommyreddad/hugo-scholar => " + filepath.ToSlash(repo) + "\n",
 		"hugo.toml":          "baseURL = '" + firstNonempty(test.baseURL, "https://example.org/") + "'\ndisableKinds = ['taxonomy', 'term', 'RSS', 'sitemap']\n[[module.imports]]\npath = 'github.com/tommyreddad/hugo-scholar'\n" + test.config,
 		"layouts/index.html": "{{ .Content }}", "layouts/_default/single.html": "{{ .Content }}",
-		"layouts/shortcodes/wrap.html": "<div>{{ .Inner }}</div>",
-		"_bibliography/references.bib": firstNonempty(test.bib, integrationBibliography),
-		"content/_index.md":            page, "styles/numeric.csl": string(numeric),
+		"layouts/shortcodes/wrap.html":                         "<div>{{ .Inner }}</div>",
+		"_bibliography/references.bib":                         firstNonempty(test.bib, integrationBibliography),
+		"content/" + firstNonempty(test.pagePath, "_index.md"): page, "styles/numeric.csl": string(numeric),
 	}
 	for name, content := range test.files {
 		files[name] = content
@@ -369,7 +395,11 @@ func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test 
 	if output, err := hugo.CombinedOutput(); err != nil {
 		t.Fatalf("hugo: %v\n%s", err, output)
 	}
-	output, err := os.ReadFile(filepath.Join(root, "public", "index.html"))
+	outputPath := "index.html"
+	if test.pagePath != "" {
+		outputPath = strings.TrimSuffix(test.pagePath, filepath.Ext(test.pagePath)) + "/index.html"
+	}
+	output, err := os.ReadFile(filepath.Join(root, "public", outputPath))
 	if err != nil {
 		t.Fatal(err)
 	}
