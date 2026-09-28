@@ -5,7 +5,7 @@
 
 Add BibTeX citations and bibliographies to Hugo. A Go command prepares your references, and shortcodes display them in your pages.
 
-References use AMS labels such as `[DoKe15]` by default. See [a publications page](https://tommy.reddad.net/publications/) built with Hugo Scholar, or explore the [example site](example/).
+References use numbered AMS citations such as `[1]` by default. See [a publications page](https://tommy.reddad.net/publications/) built with Hugo Scholar, or explore the [example site](example/).
 
 ## Setup
 
@@ -15,7 +15,7 @@ From your site's root directory, add the module. Skip `hugo mod init` if you alr
 
 ```sh
 hugo mod init example.com/my-site
-go get github.com/tommyreddad/hugo-scholar@v0.1.2
+go get github.com/tommyreddad/hugo-scholar@v0.1.3
 ```
 
 Import it in `hugo.toml`:
@@ -90,15 +90,15 @@ Choose a bundled style in `hugo.toml`:
 style = 'ieee'
 ```
 
-| Style                | Setting                                      |
-| -------------------- | -------------------------------------------- |
-| AMS labels (default) | `american-mathematical-society-label`        |
-| AMS numbered         | `american-mathematical-society-numeric`      |
-| ACM                  | `association-for-computing-machinery`        |
-| IEEE                 | `ieee`                                       |
-| Springer LNCS        | `springer-lecture-notes-in-computer-science` |
-| APA                  | `apa`                                        |
-| MLA                  | `modern-language-association`                |
+| Style                  | Setting                                      |
+| ---------------------- | -------------------------------------------- |
+| AMS numbered (default) | `american-mathematical-society-numeric`      |
+| AMS labels             | `american-mathematical-society-label`        |
+| ACM                    | `association-for-computing-machinery`        |
+| IEEE                   | `ieee`                                       |
+| Springer LNCS          | `springer-lecture-notes-in-computer-science` |
+| APA                    | `apa`                                        |
+| MLA                    | `modern-language-association`                |
 
 Override the site setting with `--style`, or set a style on individual shortcodes:
 
@@ -118,7 +118,7 @@ Set shared bibliography defaults in `hugo.toml`:
 ```toml
 [params.scholar]
 bibliography = 'references'
-style = 'american-mathematical-society-label'
+style = 'american-mathematical-society-numeric'
 sort_by = 'name,year'
 order = 'ascending,descending'
 ```

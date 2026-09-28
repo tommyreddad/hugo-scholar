@@ -19,7 +19,7 @@ type SiteDefaults struct {
 // directories and environment overrides. Standalone BibTeX directories do not
 // need Hugo; callers can also supply both defaults explicitly.
 func ReadSiteDefaults() (SiteDefaults, error) {
-	defaults := SiteDefaults{Bibliography: "references", Style: "american-mathematical-society-label"}
+	defaults := SiteDefaults{Bibliography: "references", Style: "american-mathematical-society-numeric"}
 	configured := false
 	for _, filename := range []string{"hugo.toml", "hugo.yaml", "hugo.yml", "hugo.json", "config.toml", "config.yaml", "config.yml", "config.json", "config"} {
 		if _, err := os.Stat(filename); err == nil {
