@@ -15,7 +15,7 @@ From your site's root directory, add the module. Skip `hugo mod init` if you alr
 
 ```sh
 hugo mod init example.com/my-site
-go get github.com/tommyreddad/hugo-scholar@v0.1.3
+go get github.com/tommyreddad/hugo-scholar@v0.1.4
 ```
 
 Import it in `hugo.toml`:
