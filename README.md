@@ -1,7 +1,6 @@
 # Hugo Scholar
 
 [![CI](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml/badge.svg)](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml)
-[![Last commit](https://img.shields.io/github/last-commit/tommyreddad/hugo-scholar)](https://github.com/tommyreddad/hugo-scholar/commits)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Add BibTeX citations and bibliographies to Hugo. A Go command prepares your references, and shortcodes display them in your pages.
