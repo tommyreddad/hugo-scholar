@@ -4,8 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 BibTeX citations for Hugo. Keep references in a `.bib` file, cite them by key in
-Markdown, and generate the bibliography before Hugo builds your site. The
-default numbered style needs only Go and Hugo—no citation processor.
+Markdown, and generate the bibliography before Hugo builds your site.
 
 ## Quick start
 
@@ -78,9 +77,11 @@ If your deployment builds from source, run both commands in its build step:
 go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar && hugo --minify
 ```
 
-Hugo writes the site to `public/`. For [Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/),
-use the command above as the build command and `public/` as the output directory.
-For [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site),
+Hugo writes the site to `public/`. For
+[Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/),
+use the command above as the build command and `public/` as the output
+directory. For
+[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site),
 run it in your Actions workflow before uploading `public/`. If your deployment
 runs only Hugo, generate `data/scholar.json` locally and commit it with your
 content changes. The default style needs no `citeproc` installation in either
@@ -112,8 +113,8 @@ To use a CSL style such as IEEE or APA, install
 ```
 
 For a style that is not bundled, download its `.csl` file from the
-[CSL styles repository](https://github.com/citation-style-language/styles),
-save it in your site's `styles/` directory (for example,
+[CSL styles repository](https://github.com/citation-style-language/styles), save
+it in your site's `styles/` directory (for example,
 `styles/chicago-author-date.csl`), and set `style = 'chicago-author-date'`.
 Commit the file so your deployment can use it. If the style depends on a parent
 style that is also not bundled, save that `.csl` file there too.
