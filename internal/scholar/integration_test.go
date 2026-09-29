@@ -391,7 +391,7 @@ func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test 
 		page = "---\ntitle: Review\n---\n\n" + page
 	}
 	files := map[string]string{
-		"go.mod":             "module integration\n\ngo 1.26\n\nrequire github.com/tommyreddad/hugo-scholar v0.1.4\nreplace github.com/tommyreddad/hugo-scholar => " + filepath.ToSlash(repo) + "\n",
+		"go.mod":             "module integration\n\ngo 1.26\n\nrequire github.com/tommyreddad/hugo-scholar v0.1.5\nreplace github.com/tommyreddad/hugo-scholar => " + filepath.ToSlash(repo) + "\n",
 		"hugo.toml":          "baseURL = '" + firstNonempty(test.baseURL, "https://example.org/") + "'\ndisableKinds = ['taxonomy', 'term', 'RSS', 'sitemap']\n[[module.imports]]\npath = 'github.com/tommyreddad/hugo-scholar'\n" + test.config,
 		"layouts/index.html": "{{ .Content }}", "layouts/_default/single.html": "{{ .Content }}",
 		"layouts/shortcodes/wrap.html":                         "<div>{{ .Inner }}</div>",
