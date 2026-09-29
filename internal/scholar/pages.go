@@ -13,6 +13,7 @@ type PageRender struct {
 	Citations        map[string]string                       `json:"citations"`
 	References       map[string]map[string]string            `json:"references"`
 	Cited            map[string][]string                     `json:"cited"`
+	BasicNumbers     map[string]map[string]int               `json:"basic_numbers,omitempty"`
 	CitedAt          map[string]CitedSnapshot                `json:"cited_at,omitempty"`
 	Separate         map[string][]string                     `json:"separate,omitempty"`
 	StyledCitations  map[string]map[string]string            `json:"styled_citations,omitempty"`
@@ -82,6 +83,7 @@ func renderPages(options Options, data *Data) error {
 			Citations:        map[string]string{},
 			References:       map[string]map[string]string{},
 			Cited:            map[string][]string{},
+			BasicNumbers:     map[string]map[string]int{},
 			CitedAt:          map[string]CitedSnapshot{},
 			Separate:         map[string][]string{},
 			StyledCitations:  map[string]map[string]string{},
@@ -93,6 +95,7 @@ func renderPages(options Options, data *Data) error {
 		grouped := map[string][]shortcode{}
 		stylesByFile := map[string]map[string]bool{}
 		fullBibliographies := map[string]map[string]bool{}
+		basicCitedInOrder := map[string]bool{}
 		active := map[string][]string{}
 		for _, call := range scanShortcodes(body) {
 			file := firstNonempty(call.Args["file"], options.DefaultBibliography, "references")
@@ -102,6 +105,9 @@ func renderPages(options Options, data *Data) error {
 					fullBibliographies[file] = map[string]bool{}
 				}
 				fullBibliographies[file][style] = true
+			}
+			if call.Name == "bibliography" && call.Args["cited_in_order"] == "true" && style == "basic" {
+				basicCitedInOrder[file] = true
 			}
 			if style := call.Args["style"]; style != "" && style != options.Style && style != "basic" && (call.Name == "cite" || call.Name == "quote" || call.Name == "bibliography" || call.Name == "reference") {
 				if stylesByFile[file] == nil {
@@ -165,6 +171,24 @@ func renderPages(options Options, data *Data) error {
 				citations = append(citations, citation)
 				validCalls = append(validCalls, call)
 			}
+			numbers := map[string]int{}
+			if fullBibliographies[file]["basic"] {
+				for _, record := range records {
+					numbers[record.Entry["key"]] = len(numbers) + 1
+				}
+			} else if basicCitedInOrder[file] {
+				for _, key := range page.Cited[file] {
+					numbers[key] = len(numbers) + 1
+				}
+			} else {
+				for _, record := range records {
+					key := record.Entry["key"]
+					if cited[key] {
+						numbers[key] = len(numbers) + 1
+					}
+				}
+			}
+			page.BasicNumbers[file] = numbers
 			var styles []string
 			if options.Style != "" && options.Style != "basic" {
 				styles = append(styles, options.Style)

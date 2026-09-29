@@ -132,13 +132,16 @@ func authorReference(entry Entry) string {
 			given = strings.Join(parts[:len(parts)-1], " ")
 		}
 		var initials []string
-		for _, part := range strings.Fields(strings.ReplaceAll(given, "-", " ")) {
-			initials = append(initials, string([]rune(part)[0])+".")
+		for _, part := range strings.Fields(given) {
+			var pieces []string
+			for _, piece := range strings.Split(part, "-") {
+				if piece != "" {
+					pieces = append(pieces, string([]rune(piece)[0])+".")
+				}
+			}
+			initials = append(initials, strings.Join(pieces, "-"))
 		}
-		name := strings.TrimSpace(family)
-		if len(initials) > 0 {
-			name += ", " + strings.Join(initials, " ")
-		}
+		name := strings.TrimSpace(strings.Join(initials, " ") + " " + strings.TrimSpace(family))
 		formatted = append(formatted, name)
 	}
 	switch len(formatted) {
@@ -146,8 +149,10 @@ func authorReference(entry Entry) string {
 		return Clean(entry["organization"])
 	case 1:
 		return formatted[0]
+	case 2:
+		return formatted[0] + " and " + formatted[1]
 	default:
-		return strings.Join(formatted[:len(formatted)-1], ", ") + ", & " + formatted[len(formatted)-1]
+		return strings.Join(formatted[:len(formatted)-1], ", ") + ", and " + formatted[len(formatted)-1]
 	}
 }
 
@@ -164,38 +169,65 @@ func Reference(entry Entry) string {
 	escape := func(field string) string { return html.EscapeString(Clean(entry[field])) }
 	var parts []string
 	if author := authorReference(entry); author != "" {
-		parts = append(parts, html.EscapeString(strings.TrimSuffix(author, "."))+".")
+		parts = append(parts, html.EscapeString(author)+".")
 	}
-	year := escape("year")
-	if year == "" {
-		year = "n.d."
-	}
-	parts = append(parts, "("+year+").")
 	if title := escape("title"); title != "" {
+		if url := referenceURL(entry); url != "" {
+			title = `<a href="` + html.EscapeString(url) + `">` + title + `</a>`
+		}
 		if entry["type"] == "book" || strings.HasSuffix(entry["type"], "thesis") {
 			parts = append(parts, "<i>"+title+"</i>.")
 		} else {
 			parts = append(parts, title+".")
 		}
 	}
-	venue := html.EscapeString(Clean(firstNonempty(entry["journal"], entry["booktitle"], entry["publisher"], entry["school"])))
+	venue := html.EscapeString(Clean(firstNonempty(entry["shortjournal"], entry["journal_abbrev"], entry["journal"], entry["booktitle"], entry["publisher"], entry["school"])))
 	if venue != "" {
 		if entry["type"] == "article" {
-			parts = append(parts, "<i>"+venue+"</i>.")
+			venue = "<i>" + venue + "</i>"
+			var details string
+			if volume := escape("volume"); volume != "" {
+				details = volume
+				if issue := escape("number"); issue != "" {
+					details += "(" + issue + ")"
+				}
+			}
+			if pages := html.EscapeString(strings.ReplaceAll(Clean(entry["pages"]), "--", "–")); pages != "" {
+				if details != "" {
+					details += ":" + pages
+				} else {
+					details = "pp. " + pages
+				}
+			}
+			if details != "" {
+				venue += ", " + details
+			} else if strings.EqualFold(Clean(entry["journal"]), "arXiv e-prints") && entry["eprint"] != "" {
+				venue += ", abs/" + escape("eprint")
+			}
+			parts = append(parts, venue+",")
 		} else {
 			parts = append(parts, venue+".")
 		}
 	}
-	if doi := cleanURL(entry["doi"]); doi != "" {
-		url := doi
-		if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
-			url = "https://doi.org/" + doi
-		}
-		parts = append(parts, "<a href=\""+html.EscapeString(url)+"\">"+html.EscapeString(url)+"</a>")
-	} else if url := cleanURL(entry["url"]); strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
-		parts = append(parts, "<a href=\""+html.EscapeString(url)+"\">"+html.EscapeString(url)+"</a>")
+	year := escape("year")
+	if year == "" {
+		year = "n.d"
 	}
+	parts = append(parts, year+".")
 	return strings.Join(parts, " ")
+}
+
+func referenceURL(entry Entry) string {
+	if url := cleanURL(entry["url"]); strings.HasPrefix(url, "https://") || strings.HasPrefix(url, "http://") {
+		return url
+	}
+	if doi := cleanURL(entry["doi"]); doi != "" {
+		if strings.HasPrefix(doi, "https://") || strings.HasPrefix(doi, "http://") {
+			return doi
+		}
+		return "https://doi.org/" + doi
+	}
+	return ""
 }
 
 type Data struct {
@@ -329,7 +361,11 @@ func prepareRecords(options Options, name string, entries []Entry) ([]Record, er
 		}
 		entry["name_sort"] = nameSort(entry)
 		entry["citation"] = authorCitation(entry) + ", " + year
-		entry["basic_reference"] = Reference(entry)
+		entry["basic_citation"] = fmt.Sprintf("[%d]", len(records)+1)
+		if options.Style == "basic" {
+			entry["citation"] = entry["basic_citation"]
+		}
+		entry["basic_reference"] = fmt.Sprintf("[%d] %s", len(records)+1, Reference(entry))
 		entry["reference"] = entry["basic_reference"]
 		record := Record{Entry: entry}
 		if options.Repository != "" {

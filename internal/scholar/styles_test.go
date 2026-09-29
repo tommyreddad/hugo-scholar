@@ -212,7 +212,7 @@ func TestSiteDefaultsWithoutHugo(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("PATH", "")
 	defaults, err := ReadSiteDefaults()
-	if err != nil || defaults.Bibliography != "references" || defaults.Style != "american-mathematical-society-numeric" {
+	if err != nil || defaults.Bibliography != "references" || defaults.Style != "basic" {
 		t.Fatalf("standalone defaults: %+v, %v", defaults, err)
 	}
 }

@@ -7,7 +7,16 @@
   {{- if eq .key $key -}}
     {{- $found = true -}}
     {{- $reference := .reference -}}
-    {{- if eq $style "basic" -}}{{ $reference = .basic_reference }}{{ end -}}
+    {{- if eq $style "basic" -}}
+      {{- $reference = .basic_reference -}}
+      {{- with hugo.Data.scholar.pages -}}
+        {{- with index . $.Page.File.Path -}}
+          {{- with index (index .basic_numbers $file | default dict) $key -}}
+            {{- $reference = printf "[%d] %s" (int .) (replaceRE `^\[[0-9]+\] ` "" $reference) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
     {{- with hugo.Data.scholar.pages -}}
       {{- with index . $.Page.File.Path -}}
         {{- $rendered := .references -}}

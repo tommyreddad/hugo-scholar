@@ -5,6 +5,10 @@
 {{- $class := .Get "class" | default (site.Params.scholar.cite_class | default "citation") -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
 {{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
+{{- $basicNumbers := dict -}}
+{{- with hugo.Data.scholar.pages -}}
+  {{- with index . $.Page.File.Path -}}{{- $basicNumbers = index .basic_numbers $file | default dict -}}{{- end -}}
+{{- end -}}
 {{- $citations := slice -}}
 {{- $orderedKeys := slice -}}
 {{- $first := "" -}}
@@ -18,7 +22,13 @@
         {{- $found = true -}}
         {{- if not $first -}}{{ $first = $key }}{{ end -}}
         {{- $orderedKeys = $orderedKeys | append $key -}}
-        {{- $citations = $citations | append .citation -}}
+        {{- if eq $style "basic" -}}
+          {{- $citation := .basic_citation -}}
+          {{- with index $basicNumbers $key -}}{{- $citation = printf "[%d]" (int .) -}}{{- end -}}
+          {{- $citations = $citations | append $citation -}}
+        {{- else -}}
+          {{- $citations = $citations | append .citation -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
     {{- if not $found -}}{{ $missing = true }}{{ end -}}
@@ -26,6 +36,11 @@
 {{- end -}}
 {{- if not (strings.TrimSpace $keys) -}}{{ errorf "hugo-scholar: cite needs a citation key" }}{{ end -}}
 {{- $label := printf "(%s)" (delimit $citations "; ") -}}
+{{- if eq $style "basic" -}}
+  {{- $numbers := slice -}}
+  {{- range $citations -}}{{ $numbers = $numbers | append (strings.TrimPrefix "[" (strings.TrimSuffix "]" .)) }}{{ end -}}
+  {{- $label = printf "[%s]" (delimit $numbers ", ") -}}
+{{- end -}}
 {{- $csl := false -}}
 {{- if ne $style "basic" -}}
   {{- with hugo.Data.scholar.pages -}}
@@ -42,14 +57,20 @@
   {{- end -}}
 {{- end -}}
 {{- if not $csl -}}
-{{- if .Get "suppress_author" -}}
+{{- if and (.Get "suppress_author") (ne $style "basic") -}}
   {{- $years := slice -}}
   {{- range $entries -}}
     {{- if in (findRE `\S+` $keys) .key -}}{{ $years = $years | append (.year | default "n.d.") }}{{ end -}}
   {{- end -}}
   {{- $label = printf "(%s)" (delimit $years "; ") -}}
 {{- end -}}
-{{- with .Get "locator" -}}{{ $label = printf "%s, p. %s)" (strings.TrimSuffix ")" $label) . }}{{ end -}}
+{{- with .Get "locator" -}}
+  {{- if eq $style "basic" -}}
+    {{- $label = printf "%s, p. %s]" (strings.TrimSuffix "]" $label) . -}}
+  {{- else -}}
+    {{- $label = printf "%s, p. %s)" (strings.TrimSuffix ")" $label) . -}}
+  {{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $separate := slice -}}
 {{- with hugo.Data.scholar.pages -}}

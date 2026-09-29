@@ -5,6 +5,14 @@
 {{- $relative := .Get "relative" | default (site.Params.scholar.relative | default "") -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
 {{- $label := printf "(%s)" $entry.citation -}}
+{{- if eq $style "basic" -}}
+  {{- $label = $entry.basic_citation -}}
+  {{- with hugo.Data.scholar.pages -}}
+    {{- with index . $.Page.File.Path -}}
+      {{- with index (index .basic_numbers $file | default dict) $key -}}{{- $label = printf "[%d]" (int .) -}}{{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 {{- $csl := false -}}
 {{- if ne $style "basic" -}}
   {{- with hugo.Data.scholar.pages -}}

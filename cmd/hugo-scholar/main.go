@@ -18,7 +18,7 @@ var (
 	details              = flag.Bool("details", false, "generate one Hugo content page per entry in the default bibliography")
 	detailsDir           = flag.String("details-dir", "bibliography", "content directory and URL path for detail pages")
 	detailsPermalink     = flag.String("details-permalink", "", "detail page URL template, such as /bibliography/:year/:key/")
-	style                = flag.String("style", "", "local CSL style name or file (Hugo params.scholar.style, or american-mathematical-society-numeric); bundled: apa, ieee, modern-language-association, american-mathematical-society-label, american-mathematical-society-numeric, association-for-computing-machinery, springer-lecture-notes-in-computer-science; use basic to skip citeproc")
+	style                = flag.String("style", "", "style name or local CSL file (Hugo params.scholar.style, or basic); bundled CSL styles: apa, ieee, modern-language-association, american-mathematical-society-label, american-mathematical-society-numeric, association-for-computing-machinery, springer-lecture-notes-in-computer-science; CSL styles require citeproc")
 	locale               = flag.String("locale", "en-US", "CSL locale")
 	allowLocaleOverrides = flag.Bool("allow-locale-overrides", false, "format each bibliography entry in its BibTeX language when present")
 	citeproc             = flag.String("citeproc", "citeproc", "path to the citeproc executable")

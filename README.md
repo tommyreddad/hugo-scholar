@@ -3,69 +3,130 @@
 [![CI](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml/badge.svg)](https://github.com/tommyreddad/hugo-scholar/actions/workflows/ci.yaml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Hugo Scholar adds BibTeX citations and bibliographies to a Hugo site. Keep your references in a `.bib` file, cite them in your pages, and run the generator before building the site.
+BibTeX citations for Hugo. Keep references in a `.bib` file, cite them by key in
+Markdown, and generate the bibliography before Hugo builds your site. The
+default numbered style needs only Go and Hugo—no citation processor.
 
-See the [example project](example/) for a working setup and [a publications page](https://tommy.reddad.net/publications/) for a live site.
+## Quick start
 
-## Get started
+You need [Go 1.26 or later](https://go.dev/dl/) and
+[Hugo](https://gohugo.io/installation/). Run these steps from your Hugo site's
+root directory.
 
-You need Go 1.26 or later, Hugo, and [`citeproc`](https://github.com/jgm/citeproc). If basic formatting is enough, you can skip `citeproc` and run the generator with `--style basic`.
+1. **Add the module.** If your site has no `go.mod`, initialize it first:
 
-From your Hugo site's root directory, add the module. If the site already has a `go.mod`, skip the first command.
+   ```sh
+   hugo mod init example.com/my-site
+   ```
+
+   Then add Hugo Scholar:
+
+   ```sh
+   go get github.com/tommyreddad/hugo-scholar@latest
+   ```
+
+   Add the import to `hugo.toml`:
+
+   ```toml
+   [[module.imports]]
+     path = 'github.com/tommyreddad/hugo-scholar'
+   ```
+
+2. **Add a reference.** Create `_bibliography/references.bib`:
+
+   ```bibtex
+   @article{sample,
+     author = {Doe, Jane},
+     title = {A useful paper},
+     journal = {Journal of Examples},
+     year = {2024},
+     url = {https://example.org/paper}
+   }
+   ```
+
+3. **Cite it.** In a page such as `content/reading.md`:
+
+   ```md
+   +++
+   title = 'Reading'
+   +++
+
+   This paper is useful {{< cite "sample" >}}.
+
+   ## References
+
+   {{< bibliography cited=true >}}
+   ```
+
+4. **Generate and build.** Run the generator whenever a reference or citation
+   changes, before running Hugo:
+
+   ```sh
+   go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar
+   hugo
+   ```
+
+The page now has a linked `[1]` citation and a bibliography entry with the
+paper's title linked to its URL. The generator writes `data/scholar.json`; Hugo
+reads that file when it builds the page.
+
+## Build and deploy
+
+If your deployment builds from source, run both commands in its build step:
 
 ```sh
-hugo mod init example.com/my-site
-go get github.com/tommyreddad/hugo-scholar@v0.1.4
+go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar && hugo --minify
 ```
 
-Add the module to `hugo.toml`:
+Hugo writes the site to `public/`. For [Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/),
+use the command above as the build command and `public/` as the output directory.
+For [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site),
+run it in your Actions workflow before uploading `public/`. If your deployment
+runs only Hugo, generate `data/scholar.json` locally and commit it with your
+content changes. The default style needs no `citeproc` installation in either
+workflow.
 
-```toml
-[[module.imports]]
-path = 'github.com/tommyreddad/hugo-scholar'
-```
+## Shortcodes
 
-Put your references in `_bibliography/references.bib`. For example:
+- `{{< bibliography >}}` lists every entry in `references.bib`.
+- `{{< bibliography cited=true >}}` lists only entries cited on that page.
+- `{{< cite keys="sample another-key" >}}` cites multiple entries together.
 
-```bibtex
-@book{go-book,
-  title = {The Go Programming Language},
-  author = {Donovan, Alan A. A. and Kernighan, Brian W.},
-  year = 2015,
-  publisher = {Addison-Wesley}
-}
-```
+## Bibliography styles
 
-Use the entry key in a page:
+### Basic
 
-```text
-This book is useful {{< cite "go-book" >}}.
+The default `basic` style numbers references on each page. It formats journal
+volume, issue, and pages when those fields are present. Add `shortjournal` to a
+BibTeX entry to display an abbreviated journal name; otherwise it uses
+`journal`. A `url` links the title, with `doi` as a fallback.
 
-## References
+### CSL styles
 
-{{< bibliography >}}
-```
-
-Generate the reference data, then build your site:
-
-```sh
-go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar
-hugo
-```
-
-Run the generator again when you change references or citations. It writes `data/scholar.json`. Commit that file if your deployment runs Hugo without the generator.
-
-## A few options
-
-Use `{{< bibliography cited=true >}}` to list only sources cited on the page. To cite more than one source, use `{{< cite keys="go-book paper" >}}`.
-
-The default style uses numbered AMS citations. To use another bundled style, set it in `hugo.toml`:
+To use a CSL style such as IEEE or APA, install
+[`citeproc`](https://github.com/jgm/citeproc) and set the style in `hugo.toml`:
 
 ```toml
 [params.scholar]
-style = 'ieee'
+  style = 'ieee'
 ```
 
-The [example pages](example/content/) show other shortcodes and options. Run `go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar --help` for generator options.
+For a style that is not bundled, download its `.csl` file from the
+[CSL styles repository](https://github.com/citation-style-language/styles),
+save it in your site's `styles/` directory (for example,
+`styles/chicago-author-date.csl`), and set `style = 'chicago-author-date'`.
+Commit the file so your deployment can use it. If the style depends on a parent
+style that is also not bundled, save that `.csl` file there too.
 
-Hugo Scholar is [MIT licensed](LICENSE). Bundled citation styles have separate terms listed in [third-party notices](THIRD_PARTY_NOTICES.md).
+## More examples
+
+See the [example site](example/) for more shortcodes and the author's
+[publications page](https://tommy.reddad.net/publications/) for a rendered
+bibliography. Add `--help` to the generator command to see all options.
+
+## Credits and license
+
+Inspired by [Jekyll Scholar](https://github.com/inukshuk/jekyll-scholar).
+
+Hugo Scholar is [MIT licensed](LICENSE). Bundled CSL styles have separate terms
+in the [third-party notices](THIRD_PARTY_NOTICES.md).

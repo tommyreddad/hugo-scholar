@@ -102,7 +102,7 @@ func TestPrepareFormatsAndEscapes(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry := data.Bibliographies["references"][0].Entry
-	if entry["citation"] != "Doe, 2022" || !strings.Contains(entry["reference"], "&lt;Book&gt;") || strings.Contains(entry["reference"], "<Book>") {
+	if entry["citation"] != "[1]" || !strings.Contains(entry["reference"], "&lt;Book&gt;") || strings.Contains(entry["reference"], "<Book>") {
 		t.Fatalf("unsafe or unexpected format: %#v", entry)
 	}
 	output := filepath.Join(dir, "data", "scholar.json")
@@ -111,6 +111,33 @@ func TestPrepareFormatsAndEscapes(t *testing.T) {
 	}
 	if content, err := os.ReadFile(output); err != nil || !strings.Contains(string(content), `"bibliographies"`) {
 		t.Fatalf("JSON output failed: %v", err)
+	}
+}
+
+func TestBasicReferenceJournalDetails(t *testing.T) {
+	entry := Entry{
+		"type": "article", "author": "Lee, Morgan and Chen, Riley",
+		"title": "A sample study of trees", "journal": "Journal of Sample Studies",
+		"shortjournal": "J. Sample Stud.", "volume": "12", "number": "3",
+		"pages": "101--118", "year": "2024", "url": "https://example.org/articles/sample-trees",
+	}
+	want := `M. Lee and R. Chen. <a href="https://example.org/articles/sample-trees">A sample study of trees</a>. <i>J. Sample Stud.</i>, 12(3):101–118, 2024.`
+	if got := Reference(entry); got != want {
+		t.Fatalf("basic reference = %q, want %q", got, want)
+	}
+}
+
+func TestBasicReferenceArxivAndDOI(t *testing.T) {
+	for _, test := range []struct {
+		entry Entry
+		want  string
+	}{
+		{Entry{"type": "article", "title": "A sample preprint", "journal": "arXiv e-prints", "eprint": "1234.56789", "year": "2023", "url": "https://example.org/preprints/sample"}, `<a href="https://example.org/preprints/sample">A sample preprint</a>. <i>arXiv e-prints</i>, abs/1234.56789, 2023.`},
+		{Entry{"type": "article", "title": "A & B", "journal": "Journal of Sample Computing", "volume": "4", "number": "1", "pages": "1--11", "year": "2024", "doi": "10.1234/sample.2024"}, `<a href="https://doi.org/10.1234/sample.2024">A &amp; B</a>. <i>Journal of Sample Computing</i>, 4(1):1–11, 2024.`},
+	} {
+		if got := Reference(test.entry); got != test.want {
+			t.Errorf("basic reference = %q, want %q", got, test.want)
+		}
 	}
 }
 

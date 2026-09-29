@@ -5,19 +5,29 @@
 {{- if not (in (slice "li" "div") $itemTag) -}}{{ errorf "hugo-scholar: invalid bibliography item tag %q" $itemTag }}{{ end -}}
 {{- if not (in (slice "span" "div" "p") $referenceTag) -}}{{ errorf "hugo-scholar: invalid reference tag %q" $referenceTag }}{{ end -}}
 {{- $listAttributes := printf " class=\"%s\"" (.class | htmlEscape) -}}
+{{- if and (eq .style "basic") (not site.Params.scholar.bibliography_list_attributes.style) -}}{{ $listAttributes = printf "%s style=\"list-style-type:none;padding:0;margin:0\"" $listAttributes }}{{ end -}}
 {{- range $name, $value := site.Params.scholar.bibliography_list_attributes -}}
   {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid list attribute %q" $name }}{{ end -}}
   {{- $listAttributes = printf "%s %s=\"%s\"" $listAttributes $name ($value | string | htmlEscape) -}}
 {{- end -}}
 {{- $itemAttributes := "" -}}
+{{- if and (eq .style "basic") (not site.Params.scholar.bibliography_item_attributes.style) -}}{{ $itemAttributes = ` style="padding:0;margin:0"` }}{{ end -}}
 {{- range $name, $value := site.Params.scholar.bibliography_item_attributes -}}
   {{- if not (findRE `^[A-Za-z_:][A-Za-z0-9:._-]*$` $name 1) -}}{{ errorf "hugo-scholar: invalid item attribute %q" $name }}{{ end -}}
   {{- $itemAttributes = printf "%s %s=\"%s\"" $itemAttributes $name ($value | string | htmlEscape) -}}
 {{- end -}}
 {{- printf "<%s%s>" $listTag $listAttributes | safeHTML -}}
+{{- $basicNumbers := dict -}}
+{{- with hugo.Data.scholar.pages -}}
+  {{- with index . $.page.File.Path -}}{{- $basicNumbers = index .basic_numbers $.file | default dict -}}{{- end -}}
+{{- end -}}
 {{- range $index, $entry := .entries -}}
   {{- $reference := $entry.reference -}}
-  {{- if eq $.style "basic" -}}{{ $reference = $entry.basic_reference }}{{ end -}}
+  {{- if eq $.style "basic" -}}
+    {{- $number := $entry.basic_citation -}}
+    {{- with index $basicNumbers $entry.key -}}{{- $number = printf "[%d]" (int .) -}}{{- end -}}
+    {{- $reference = printf "%s %s" $number (replaceRE `^\[[0-9]+\] ` "" $entry.basic_reference) -}}
+  {{- end -}}
   {{- with hugo.Data.scholar.pages -}}
     {{- with index . $.page.File.Path -}}
       {{- $rendered := .references -}}

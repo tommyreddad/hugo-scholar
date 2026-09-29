@@ -62,10 +62,43 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 @book{b,title={Same},year=2020}`
 	tests := []integrationCase{
 		{
-			name: "default AMS numbered", useSiteStyle: true,
+			name: "basic numbered journal reference", style: "basic",
+			bib: `@book{a,title={First},year=2020}
+@book{b,title={Second},year=2020}
+@book{c,title={Third},year=2020}
+@book{d,title={Fourth},year=2020}
+@article{sample-article,author={Lee, Morgan and Chen, Riley},title={A sample study of trees},journal={Journal of Sample Studies},shortjournal={J. Sample Stud.},volume={12},number={3},pages={101--118},year={2024},url={https://example.org/articles/sample-trees}}`,
+			page:       `{{< cite "sample-article" >}} {{< bibliography cited=true >}}`,
+			want:       []string{`href="#sample-article">[1]</a>`, `id="sample-article">[1] M. Lee and R. Chen. <a href="https://example.org/articles/sample-trees">A sample study of trees</a>. <i>J. Sample Stud.</i>, 12(3):101–118, 2024.`},
+			countItems: 1,
+		},
+		{
+			name: "basic full bibliography keeps file numbers", style: "basic",
+			bib: `@book{a,title={First},year=2020}
+@book{b,title={Second},year=2020}`,
+			page:       `{{< cite "b" >}} {{< bibliography >}}`,
+			want:       []string{`href="#b">[2]</a>`, `id="a">[1]`, `id="b">[2]`},
+			countItems: 2,
+		},
+		{
+			name: "basic cited order numbers match list", style: "basic",
+			page:       `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited_in_order=true >}}`,
+			want:       []string{`href="#b">[1]</a>`, `href="#a">[2]</a>`, `id="b">[1]`, `id="a">[2]`},
+			ordered:    []string{`id="b"`, `id="a"`},
+			countItems: 2,
+		},
+		{
+			name: "basic multiple citations and locator", style: "basic",
+			page:       `{{< cite keys="b a" separate_links=true >}} {{< cite key="b" locator="42" >}} {{< bibliography >}}`,
+			want:       []string{`[<a class="citation" href="#b">2</a>, <a class="citation" href="#a">1</a>]`, `href="#b">[2, p. 42]</a>`, `id="a">[1]`},
+			countItems: 3,
+		},
+		{
+			name: "default basic numbered", useSiteStyle: true,
+			flags:   []string{"--citeproc", "/nonexistent/citeproc"},
 			page:    `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited=true >}}`,
-			want:    []string{`href="#b">[1]</a>`, `href="#a">[2]</a>`},
-			ordered: []string{`id="b"`, `id="a"`}, countItems: 2,
+			want:    []string{`href="#b">[2]</a>`, `href="#a">[1]</a>`, `id="a">[1]`, `id="b">[2]`},
+			ordered: []string{`id="a"`, `id="b"`}, countItems: 2,
 		},
 		{
 			name: "single late entry on post", style: "association-for-computing-machinery",
@@ -77,12 +110,12 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 @book{f,author={Foxtrot, Fran},title={Sixth},year=2020}
 @book{g,author={Golf, Gil},title={Seventh},year=2020}
 @book{h,author={Hotel, Hal},title={Eighth},year=2020}
-@book{devroye2019discrete,author={Zulu, Zoe},title={Discrete},year=2019}`,
+@book{latebook,author={Zulu, Zoe},title={Late Book},year=2019}`,
 			pagePath: "posts/example.md",
-			page: `{{< cite "devroye2019discrete" >}}
+			page: `{{< cite "latebook" >}}
 
 {{< bibliography cited=true >}}`,
-			want:       []string{`href="#devroye2019discrete">[1]</a>`, `id="devroye2019discrete"><div class="scholar-csl"><span class="csl-left-margin">[1]</span>`},
+			want:       []string{`href="#latebook">[1]</a>`, `id="latebook"><div class="scholar-csl"><span class="csl-left-margin">[1]</span>`},
 			absent:     []string{`[9]`},
 			countItems: 1,
 		},
@@ -94,15 +127,17 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		},
 		{
 			name: "Hugo style default", useSiteStyle: true,
-			config: "[params.scholar]\nstyle = 'ieee'\n",
-			page:   `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited=true >}}`,
-			want:   []string{`href="#b">[1]</a>`, `href="#a">[2]</a>`}, countItems: 2,
+			needsCiteproc: true,
+			config:        "[params.scholar]\nstyle = 'ieee'\n",
+			page:          `{{< cite "b" >}} {{< cite "a" >}} {{< bibliography cited=true >}}`,
+			want:          []string{`href="#b">[1]</a>`, `href="#a">[2]</a>`}, countItems: 2,
 		},
 		{
 			name: "Hugo style configuration directory", useSiteStyle: true,
-			files: map[string]string{"config/_default/params.toml": "[scholar]\nstyle = 'ieee'\n"},
-			page:  `{{< cite "a" >}} {{< bibliography cited=true >}}`,
-			want:  []string{`href="#a">[1]</a>`}, countItems: 1,
+			needsCiteproc: true,
+			files:         map[string]string{"config/_default/params.toml": "[scholar]\nstyle = 'ieee'\n"},
+			page:          `{{< cite "a" >}} {{< bibliography cited=true >}}`,
+			want:          []string{`href="#a">[1]</a>`}, countItems: 1,
 		},
 		{
 			name: "explicit style overrides site", style: "apa",
@@ -112,10 +147,11 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		},
 		{
 			name: "configured local journal style", useSiteStyle: true,
-			config: "[params.scholar]\nstyle = 'dependent/journal'\n",
-			files:  map[string]string{"styles/dependent/journal.csl": dependentStyle("https://www.zotero.org/styles/numeric", "en-US")},
-			page:   `{{< cite "a" >}} {{< bibliography cited=true >}}`,
-			want:   []string{`href="#a">[1]</a>`}, countItems: 1,
+			needsCiteproc: true,
+			config:        "[params.scholar]\nstyle = 'dependent/journal'\n",
+			files:         map[string]string{"styles/dependent/journal.csl": dependentStyle("https://www.zotero.org/styles/numeric", "en-US")},
+			page:          `{{< cite "a" >}} {{< bibliography cited=true >}}`,
+			want:          []string{`href="#a">[1]</a>`}, countItems: 1,
 		},
 		{
 			name: "bundled shortcode style override", style: "apa",
@@ -346,7 +382,7 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 
 func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test integrationCase) string {
 	t.Helper()
-	if test.needsCiteproc || test.useSiteStyle || (test.style != "" && test.style != "basic") {
+	if test.needsCiteproc || (test.style != "" && test.style != "basic") {
 		requireIntegrationTool(t, "citeproc")
 	}
 	root := t.TempDir()
@@ -422,7 +458,7 @@ func runHugoIntegration(t *testing.T, binary, repo string, numeric []byte, test 
 		}
 		position = index
 	}
-	if test.countItems >= 0 && strings.Count(html, "<li>") != test.countItems {
+	if test.countItems >= 0 && strings.Count(html, "</li>") != test.countItems {
 		t.Errorf("expected %d bibliography items in:\n%s", test.countItems, html)
 	}
 	return root
