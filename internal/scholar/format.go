@@ -41,14 +41,62 @@ func Clean(value string) string {
 	return strings.TrimSpace(value)
 }
 
-func people(value string) []string {
-	var result []string
-	for _, person := range splitNames(value) {
-		if person = Clean(person); person != "" {
-			result = append(result, person)
+type personName struct {
+	family  string
+	given   string
+	suffix  string
+	literal string
+}
+
+// Interpret names before cleaning away braces that distinguish literal authors.
+func parseNames(value string) []personName {
+	var names []personName
+	for _, raw := range splitNames(value) {
+		name := Clean(raw)
+		if name == "" {
+			continue
+		}
+		if isLiteralName(raw) {
+			names = append(names, personName{literal: name})
+			continue
+		}
+		parts := strings.SplitN(name, ",", 3)
+		person := personName{}
+		switch len(parts) {
+		case 1:
+			words := strings.Fields(name)
+			person.family = words[len(words)-1]
+			person.given = strings.Join(words[:len(words)-1], " ")
+		case 2:
+			person.family = strings.TrimSpace(parts[0])
+			person.given = strings.TrimSpace(parts[1])
+		case 3:
+			person.family = strings.TrimSpace(parts[0])
+			person.suffix = strings.TrimSpace(parts[1])
+			person.given = strings.TrimSpace(parts[2])
+		}
+		names = append(names, person)
+	}
+	return names
+}
+
+func isLiteralName(raw string) bool {
+	if !strings.HasPrefix(raw, "{") || !strings.HasSuffix(raw, "}") {
+		return false
+	}
+	depth := 0
+	for index, char := range raw {
+		switch char {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return index == len(raw)-1
+			}
 		}
 	}
-	return result
+	return false
 }
 
 func splitNames(value string) []string {
@@ -78,11 +126,15 @@ func splitNames(value string) []string {
 
 func nameSort(entry Entry) string {
 	var names []string
-	for _, name := range cslNames(firstNonempty(entry["author"], entry["editor"])) {
-		if literal := name["literal"]; literal != "" {
-			names = append(names, literal)
+	for _, name := range parseNames(firstNonempty(entry["author"], entry["editor"])) {
+		if name.literal != "" {
+			names = append(names, name.literal)
 		} else {
-			names = append(names, name["family"]+", "+name["given"])
+			key := name.family + ", " + name.given
+			if name.suffix != "" {
+				key += ", " + name.suffix
+			}
+			names = append(names, key)
 		}
 	}
 	return strings.ToLower(firstNonempty(strings.Join(names, "; "), Clean(firstNonempty(entry["bibtex_key"], entry["institution"], entry["organization"], entry["publisher"]))))
@@ -93,46 +145,33 @@ func cleanURL(value string) string {
 	return strings.TrimSpace(strings.NewReplacer(`\&`, "&", `\%`, "%", `\_`, "_", `\#`, "#", `\~{}`, "~", `\~`, "~").Replace(value))
 }
 
-func surname(person string) string {
-	if family, _, ok := strings.Cut(person, ","); ok {
-		return strings.TrimSpace(family)
-	}
-	parts := strings.Fields(person)
-	if len(parts) == 0 {
-		return ""
-	}
-	return parts[len(parts)-1]
-}
-
 func authorCitation(entry Entry) string {
-	authors := people(firstNonempty(entry["author"], entry["editor"], entry["organization"]))
+	var authors []string
+	for _, name := range parseNames(firstNonempty(entry["author"], entry["editor"], entry["organization"])) {
+		authors = append(authors, firstNonempty(name.literal, name.family))
+	}
 	switch len(authors) {
 	case 0:
 		return Clean(firstNonempty(entry["title"], entry["key"]))
 	case 1:
-		return surname(authors[0])
+		return authors[0]
 	case 2:
-		return surname(authors[0]) + " & " + surname(authors[1])
+		return authors[0] + " & " + authors[1]
 	default:
-		return surname(authors[0]) + " et al."
+		return authors[0] + " et al."
 	}
 }
 
 func authorReference(entry Entry) string {
-	authors := people(firstNonempty(entry["author"], entry["editor"]))
+	authors := parseNames(firstNonempty(entry["author"], entry["editor"]))
 	var formatted []string
 	for _, author := range authors {
-		family, given, hasComma := strings.Cut(author, ",")
-		if !hasComma {
-			parts := strings.Fields(author)
-			if len(parts) == 0 {
-				continue
-			}
-			family = parts[len(parts)-1]
-			given = strings.Join(parts[:len(parts)-1], " ")
+		if author.literal != "" {
+			formatted = append(formatted, author.literal)
+			continue
 		}
 		var initials []string
-		for _, part := range strings.Fields(given) {
+		for _, part := range strings.Fields(author.given) {
 			var pieces []string
 			for _, piece := range strings.Split(part, "-") {
 				if piece != "" {
@@ -141,7 +180,14 @@ func authorReference(entry Entry) string {
 			}
 			initials = append(initials, strings.Join(pieces, "-"))
 		}
-		name := strings.TrimSpace(strings.Join(initials, " ") + " " + strings.TrimSpace(family))
+		name := strings.TrimSpace(strings.Join(initials, " ") + " " + author.family)
+		if author.suffix != "" {
+			suffix := author.suffix
+			if strings.EqualFold(suffix, "Jr") || strings.EqualFold(suffix, "Sr") {
+				suffix += "."
+			}
+			name += ", " + suffix
+		}
 		formatted = append(formatted, name)
 	}
 	switch len(formatted) {
@@ -169,7 +215,10 @@ func Reference(entry Entry) string {
 	escape := func(field string) string { return html.EscapeString(Clean(entry[field])) }
 	var parts []string
 	if author := authorReference(entry); author != "" {
-		parts = append(parts, html.EscapeString(author)+".")
+		if !strings.HasSuffix(author, ".") {
+			author += "."
+		}
+		parts = append(parts, html.EscapeString(author))
 	}
 	if title := escape("title"); title != "" {
 		if url := referenceURL(entry); url != "" {
@@ -231,10 +280,12 @@ func referenceURL(entry Entry) string {
 }
 
 type Data struct {
-	Bibliographies map[string][]Record   `json:"bibliographies"`
-	Pages          map[string]PageRender `json:"pages,omitempty"`
-	Style          string                `json:"style"`
-	Bibliography   string                `json:"bibliography"`
+	Bibliographies map[string][]Record                   `json:"bibliographies"`
+	Pages          map[string]PageRender                 `json:"pages,omitempty"`
+	QueryMatches   map[string]map[string]map[string]bool `json:"query_matches,omitempty"`
+	Style          string                                `json:"style"`
+	Bibliography   string                                `json:"bibliography"`
+	files          map[string][]byte
 }
 
 type Record struct {
@@ -270,6 +321,8 @@ type Options struct {
 	DetailsDir           string
 	DetailsPermalink     string
 	Style                string
+	RemoveDuplicates     bool
+	Query                string
 	Locale               string
 	AllowLocaleOverrides bool
 	CiteprocPath         string
@@ -290,7 +343,10 @@ func PrepareWithOptions(options Options) (Data, error) {
 	if options.Style == "" {
 		options.Style = "basic"
 	}
-	data := Data{Bibliographies: map[string][]Record{}, Style: options.Style, Bibliography: options.DefaultBibliography}
+	if options.ContentDir == "" {
+		options.ContentDir = "content"
+	}
+	data := Data{Bibliographies: map[string][]Record{}, Style: options.Style, Bibliography: options.DefaultBibliography, QueryMatches: map[string]map[string]map[string]bool{}, files: map[string][]byte{}}
 	sourceInfo, err := os.Stat(options.Source)
 	if err != nil && !os.IsNotExist(err) {
 		return Data{}, err
@@ -343,6 +399,15 @@ func PrepareWithOptions(options Options) (Data, error) {
 	if len(data.Bibliographies) == 0 {
 		return Data{}, fmt.Errorf("no .bib or .bibtex files in %s or %s", options.Source, firstNonempty(options.ContentDir, "content"))
 	}
+	if options.DetailsDir != "" {
+		entries, exists := data.Bibliographies[options.DefaultBibliography]
+		if !exists {
+			return Data{}, fmt.Errorf("default bibliography %q is missing", options.DefaultBibliography)
+		}
+		if err := prepareDetails(options.ContentDir, options.DetailsDir, entries, data.files); err != nil {
+			return Data{}, err
+		}
+	}
 	if err := renderPages(options, &data); err != nil {
 		return Data{}, err
 	}
@@ -388,13 +453,27 @@ func prepareRecords(options Options, name string, entries []Entry) ([]Record, er
 	return records, nil
 }
 
-func WriteJSON(path string, data Data) error {
+// Write commits the prepared JSON and generated content as one operation.
+func Write(path string, data Data) error {
 	content, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	output, err := filepath.Abs(path)
+	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(content, '\n'), 0644)
+	files := make(map[string][]byte, len(data.files)+1)
+	for filename, source := range data.files {
+		filename, err = filepath.Abs(filename)
+		if err != nil {
+			return err
+		}
+		if filename == output {
+			return fmt.Errorf("JSON output %s overlaps generated content", path)
+		}
+		files[filename] = source
+	}
+	files[output] = append(content, '\n')
+	return writeFiles(files)
 }

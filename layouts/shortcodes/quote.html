@@ -4,23 +4,14 @@
 {{- $prefix := .Get "prefix" | default "" -}}
 {{- $relative := .Get "relative" | default (site.Params.scholar.relative | default "") -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
+{{- $rendered := partial "scholar/page_render.html" (dict "page" .Page "file" $file "style" $style "prefix" $prefix) -}}
 {{- $label := printf "(%s)" $entry.citation -}}
 {{- if eq $style "basic" -}}
   {{- $label = $entry.basic_citation -}}
-  {{- with hugo.Data.scholar.pages -}}
-    {{- with index . $.Page.File.Path -}}
-      {{- with index (index .basic_numbers $file | default dict) $key -}}{{- $label = printf "[%d]" (int .) -}}{{- end -}}
-    {{- end -}}
-  {{- end -}}
+  {{- with index ($rendered.basic_numbers | default dict) $key -}}{{ $label = printf "[%d]" (int .) }}{{ end -}}
 {{- end -}}
 {{- $csl := false -}}
 {{- if ne $style "basic" -}}
-  {{- with hugo.Data.scholar.pages -}}
-    {{- with index . $.Page.File.Path -}}
-      {{- $rendered := .citations -}}
-      {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_citations $style | default dict }}{{ end -}}
-      {{- with index $rendered (partial "scholar/shortcode_id.html" $) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
-    {{- end -}}
-  {{- end -}}
+  {{- with index ($rendered.citations | default dict) (partial "scholar/shortcode_id.html" $) -}}{{ $label = . }}{{ $csl = true }}{{ end -}}
 {{- end -}}
 <blockquote>{{ .Inner | markdownify }}<cite>{{ if $entry.key }}<a class="{{ site.Params.scholar.cite_class | default "citation" }}" href="{{ $relative }}#{{ $prefix }}{{ $entry.key | urlquery }}">{{ if $csl }}{{ $label | safeHTML }}{{ else }}{{ $label }}{{ end }}</a>{{ else }}{{ site.Params.scholar.missing_reference | default "(missing reference)" }}{{ end }}</cite></blockquote>

@@ -32,6 +32,13 @@ func TestAuthorWhitespaceAndSort(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("separator %q: got %#v", separator, got)
 		}
+		entry := Entry{"author": "Alpha, Ann" + separator + "Beta, Bob"}
+		if got := authorReference(entry); got != "A. Alpha and B. Beta" {
+			t.Errorf("separator %q: basic authors = %q", separator, got)
+		}
+		if got := authorCitation(entry); got != "Alpha & Beta" {
+			t.Errorf("separator %q: citation = %q", separator, got)
+		}
 	}
 	names := cslNames("{Research and\nDevelopment} and\nDoe, Jane")
 	if len(names) != 2 || names[0]["literal"] != "Research and\nDevelopment" {
@@ -44,6 +51,56 @@ func TestAuthorWhitespaceAndSort(t *testing.T) {
 	}
 	if nameSort(Entry{"author": "Zoe Adams"}) >= nameSort(Entry{"author": "Amy Zeller"}) {
 		t.Fatal("names are not sorted by family")
+	}
+}
+
+func TestPersonalNameComponents(t *testing.T) {
+	for _, test := range []struct {
+		raw       string
+		reference string
+		citation  string
+		sort      string
+		csl       map[string]string
+	}{
+		{"Smith, Jr, John", "J. Smith, Jr.", "Smith", "smith, john, jr", map[string]string{"family": "Smith", "given": "John", "suffix": "Jr"}},
+		{"Smith, Jr., John", "J. Smith, Jr.", "Smith", "smith, john, jr.", map[string]string{"family": "Smith", "given": "John", "suffix": "Jr."}},
+		{"Smith, III, John", "J. Smith, III", "Smith", "smith, john, iii", map[string]string{"family": "Smith", "given": "John", "suffix": "III"}},
+		{"Doe, Jane", "J. Doe", "Doe", "doe, jane", map[string]string{"family": "Doe", "given": "Jane"}},
+		{"Jane Doe", "J. Doe", "Doe", "doe, jane", map[string]string{"family": "Doe", "given": "Jane"}},
+		{"Élodie Durand", "É. Durand", "Durand", "durand, élodie", map[string]string{"family": "Durand", "given": "Élodie"}},
+		{"Jean-Paul Sartre", "J.-P. Sartre", "Sartre", "sartre, jean-paul", map[string]string{"family": "Sartre", "given": "Jean-Paul"}},
+		{"Doe, {Jane}", "J. Doe", "Doe", "doe, jane", map[string]string{"family": "Doe", "given": "Jane"}},
+		{"{Jean-Paul} {Sartre}", "J.-P. Sartre", "Sartre", "sartre, jean-paul", map[string]string{"family": "Sartre", "given": "Jean-Paul"}},
+		{"{Doe, Jane}", "Doe, Jane", "Doe, Jane", "doe, jane", map[string]string{"literal": "Doe, Jane"}},
+	} {
+		t.Run(test.raw, func(t *testing.T) {
+			entries, err := Parse("@book{a,author={" + test.raw + "},title={Book}}")
+			if err != nil {
+				t.Fatal(err)
+			}
+			entry := entries[0]
+			if got := authorReference(entry); got != test.reference {
+				t.Errorf("basic authors = %q, want %q", got, test.reference)
+			}
+			if got := Reference(entry); !strings.HasPrefix(got, strings.TrimSuffix(test.reference, ".")+". ") {
+				t.Errorf("basic reference author punctuation = %q", got)
+			}
+			if got := authorCitation(entry); got != test.citation {
+				t.Errorf("citation = %q, want %q", got, test.citation)
+			}
+			if got := nameSort(entry); got != test.sort {
+				t.Errorf("sort key = %q, want %q", got, test.sort)
+			}
+			if got := cslItem(entry)["author"]; !reflect.DeepEqual(got, []map[string]string{test.csl}) {
+				t.Errorf("CSL name = %#v, want %#v", got, test.csl)
+			}
+		})
+	}
+	if nameSort(Entry{"author": "Smith, Jr, Adam"}) >= nameSort(Entry{"author": "Smith, Amy"}) {
+		t.Fatal("suffix was sorted as a given name")
+	}
+	if nameSort(Entry{"author": "Smith, Jr, John"}) == nameSort(Entry{"author": "Smith, John"}) {
+		t.Fatal("suffix was lost from the sort key")
 	}
 }
 
@@ -103,6 +160,21 @@ func TestMalformedEscapesReturnErrors(t *testing.T) {
 	for _, source := range []string{"@book{x,title={abc\\", "@book{x,title=\"abc\\", "@comment{abc\\"} {
 		if _, err := Parse(source); err == nil {
 			t.Errorf("expected error for %q", source)
+		}
+	}
+}
+
+func TestCitationKeyBoundaries(t *testing.T) {
+	for _, source := range []string{
+		"@book{ à-key \n, title={One}}",
+		"@book(à-key\t, title={One})",
+	} {
+		entries, err := Parse(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 || entries[0]["key"] != "à-key" || entries[0]["title"] != "One" {
+			t.Fatalf("incorrect key/field boundary: %#v", entries)
 		}
 	}
 }

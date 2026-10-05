@@ -2,78 +2,13 @@
 {{- with .type -}}{{ $entries = where $entries "type" . }}{{ end -}}
 {{- with .query -}}
   {{- $query := strings.TrimSpace . -}}
-  {{- if in $query "," -}}
-    {{- $seen := dict -}}
-    {{- range split $query "," -}}
-      {{- $matches := partial "scholar/filter.html" (dict "entries" $entries "query" (strings.TrimSpace .)) -}}
-      {{- range $matches -}}
-        {{- if not (index $seen .key) -}}
-          {{- $seen = merge $seen (dict .key true) -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-    {{- $ordered := slice -}}
-    {{- range $entries -}}{{ if index $seen .key }}{{ $ordered = $ordered | append . }}{{ end }}{{ end -}}
-    {{- $entries = $ordered -}}
-  {{- else -}}
-  {{- $matches := findRESubmatch `^(!?)@([\w*]+)(?:\[(.*)\])?$` $query 1 -}}
-  {{- if not $matches -}}{{ errorf "hugo-scholar: invalid bibliography query %q" $query }}{{ end -}}
-  {{- $parts := index $matches 0 -}}
-  {{- $negate := eq (index $parts 1) "!" -}}
-  {{- $kind := index $parts 2 -}}
-  {{- $expression := index $parts 3 -}}
+  {{- $queries := index (hugo.Data.scholar.query_matches | default dict) $.file | default dict -}}
+  {{- if not (isset $queries $query) -}}
+    {{- errorf "hugo-scholar: query %q was not prepared; run the generator before Hugo" $query -}}
+  {{- end -}}
+  {{- $matches := index $queries $query | default dict -}}
   {{- $selected := slice -}}
-  {{- range $entries -}}
-    {{- $entry := . -}}
-    {{- $include := or (eq $kind "*") (eq .type $kind) -}}
-    {{- if $negate -}}{{ $include = not $include }}{{ end -}}
-    {{- if and $include $expression -}}
-      {{- $include = false -}}
-      {{- range split $expression "||" -}}
-        {{- $all := true -}}
-        {{- range split . "&&" -}}
-          {{- $condition := strings.TrimSpace . -}}
-          {{- $parsed := findRESubmatch `^([\w]+)\s*(\^=|~=|!~|!=|/=|>=|<=|=|>|<)\s*(.+)$` $condition 1 -}}
-          {{- $field := $condition -}}
-          {{- $operator := "" -}}
-          {{- $expected := "" -}}
-          {{- if $parsed -}}
-            {{- $field = index (index $parsed 0) 1 -}}
-            {{- $operator = index (index $parsed 0) 2 -}}
-            {{- $expected = strings.TrimSpace (index (index $parsed 0) 3) -}}
-          {{- else if not (findRE `^[\w]+$` $condition 1) -}}
-            {{- errorf "hugo-scholar: invalid query condition %q" $condition -}}
-          {{- end -}}
-          {{- $actual := index $entry $field | default "" | string -}}
-          {{- $match := false -}}
-          {{- if not $operator -}}
-            {{- $match = ne $actual "" -}}
-          {{- else if eq $operator "=" -}}
-            {{- $match = eq $actual $expected -}}
-          {{- else if or (eq $operator "!=") (eq $operator "/=") -}}
-            {{- $match = ne $actual $expected -}}
-          {{- else if eq $operator "^=" -}}
-            {{- $match = gt (len (findRE $expected $actual 1)) 0 -}}
-          {{- else if eq $operator "~=" -}}
-            {{- $match = gt (len (findRE $expected $actual 1)) 0 -}}
-          {{- else if eq $operator "!~" -}}
-            {{- $match = eq (len (findRE $expected $actual 1)) 0 -}}
-          {{- else if and (findRE `^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$` $actual) (findRE `^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$` $expected) -}}
-            {{- $a := float $actual -}}
-            {{- $b := float $expected -}}
-            {{- if eq $operator ">" -}}{{ $match = gt $a $b }}{{ end -}}
-            {{- if eq $operator ">=" -}}{{ $match = ge $a $b }}{{ end -}}
-            {{- if eq $operator "<" -}}{{ $match = lt $a $b }}{{ end -}}
-            {{- if eq $operator "<=" -}}{{ $match = le $a $b }}{{ end -}}
-          {{- end -}}
-          {{- if not $match -}}{{ $all = false }}{{ end -}}
-        {{- end -}}
-        {{- if $all -}}{{ $include = true }}{{ end -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if $include -}}{{ $selected = $selected | append $entry }}{{ end -}}
-  {{- end -}}
+  {{- range $entries -}}{{ if index $matches .key }}{{ $selected = $selected | append . }}{{ end }}{{ end -}}
   {{- $entries = $selected -}}
-  {{- end -}}
 {{- end -}}
 {{- return $entries -}}

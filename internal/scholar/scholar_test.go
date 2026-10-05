@@ -73,6 +73,11 @@ func TestParseRejectsDuplicateAndMalformedEntries(t *testing.T) {
 	for _, test := range []struct{ source, want string }{
 		{`@book{same,title={One}} @book{same,title={Two}}`, "duplicate citation key"},
 		{`@book{missing,title={One}`, "unclosed entry"},
+		{`@book{x title={One}}`, "expected comma after citation key"},
+		{`@book{x title="One"}`, "expected comma after citation key"},
+		{`@book{x title=one,year=2024}`, "expected comma after citation key"},
+		{`@book(x title={One})`, "expected comma after citation key"},
+		{`@book{xtitle={One}}`, "expected comma after citation key"},
 		{`@book{a,crossref=b} @book{b,crossref=a}`, "crossref cycle"},
 	} {
 		_, err := Parse(test.source)
@@ -106,7 +111,7 @@ func TestPrepareFormatsAndEscapes(t *testing.T) {
 		t.Fatalf("unsafe or unexpected format: %#v", entry)
 	}
 	output := filepath.Join(dir, "data", "scholar.json")
-	if err := WriteJSON(output, data); err != nil {
+	if err := Write(output, data); err != nil {
 		t.Fatal(err)
 	}
 	if content, err := os.ReadFile(output); err != nil || !strings.Contains(string(content), `"bibliographies"`) {
@@ -214,18 +219,20 @@ title: Test
 	if err != nil {
 		t.Fatal(err)
 	}
-	render := data.Pages["article.md"]
+	pageRender := data.Pages["article.md"]
+	render := pageRender.Contexts[renderContextKey("references", style, "")]
 	if render.Citations["1"] != "[1 page 42, 2]" || render.Citations["2"] != "[2]" {
 		t.Fatalf("wrong page citations: %#v", render.Citations)
 	}
-	if render.References["references"]["second"] != "[1] second" {
+	if render.References["second"] != "[1] second" {
 		t.Fatalf("wrong page references: %#v", render.References)
 	}
-	if render.StyledReferences[otherStyle]["references"]["second"] != "[1] second" {
-		t.Fatalf("missing style override references: %#v", render.StyledReferences)
+	override := pageRender.Contexts[renderContextKey("references", otherStyle, "")]
+	if override.References["second"] != "[1] second" {
+		t.Fatalf("missing style override references: %#v", override.References)
 	}
-	if render.StyledCitations[otherStyle]["4"] != "[1]" {
-		t.Fatalf("missing style override citation: %#v", render.StyledCitations)
+	if override.Citations["4"] != "[1]" {
+		t.Fatalf("missing style override citation: %#v", override.Citations)
 	}
 }
 
@@ -244,7 +251,9 @@ func TestRepositoryAndDetailPages(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repository, "paper.slides.pdf"), []byte("slides"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	data, err := PrepareWithOptions(Options{Source: source, Repository: repository, RepositoryURL: "/repository", DetailsDir: "bibliography"})
+	content := filepath.Join(dir, "content")
+	options := Options{Source: source, ContentDir: content, Repository: repository, RepositoryURL: "/repository", DetailsDir: "bibliography"}
+	data, err := PrepareWithOptions(options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,14 +261,21 @@ func TestRepositoryAndDetailPages(t *testing.T) {
 	if record.Links["slides.pdf"] != "/repository/paper.slides.pdf" || record.DetailURL != "/bibliography/paper/" {
 		t.Fatalf("wrong links: %#v", record)
 	}
-	content := filepath.Join(dir, "content")
-	if err := WriteDetails(content, "bibliography", data.Bibliographies["references"]); err != nil {
+	output := filepath.Join(dir, "data", "scholar.json")
+	if err := Write(output, data); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(content, "bibliography", "paper.md")); err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteDetails(content, "bibliography", nil); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "references.bib"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	data, err = PrepareWithOptions(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(output, data); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(content, "bibliography", "paper.md")); !os.IsNotExist(err) {
@@ -272,9 +288,41 @@ func TestRepositoryAndDetailPages(t *testing.T) {
 }
 
 func TestCorporateCSLName(t *testing.T) {
-	names := cslNames(`{World Health Organization} and Doe, Jane`)
-	if len(names) != 2 || names[0]["literal"] != "World Health Organization" || names[1]["family"] != "Doe" {
-		t.Fatalf("corporate and personal names: %#v", names)
+	entries, err := Parse(`@book{corporate,author={{World Health Organization}},title={Report}}
+@book{mixed,author={{World Health Organization} and Doe, Jane},title={Report}}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	corporate, mixed := entries[0], entries[1]
+	names := cslItem(mixed)["author"].([]map[string]string)
+	if len(names) != 2 || len(names[0]) != 1 || names[0]["literal"] != "World Health Organization" || names[1]["family"] != "Doe" || names[1]["given"] != "Jane" {
+		t.Fatalf("corporate and personal CSL names: %#v", names)
+	}
+	for _, test := range []struct {
+		entry     Entry
+		reference string
+		citation  string
+	}{
+		{corporate, "World Health Organization", "World Health Organization"},
+		{mixed, "World Health Organization and J. Doe", "World Health Organization & Doe"},
+		{Entry{"author": "{World Health Organization} and Doe, Jane and Roe, Richard"}, "World Health Organization, J. Doe, and R. Roe", "World Health Organization et al."},
+		{Entry{"editor": corporate["author"]}, "World Health Organization", "World Health Organization"},
+	} {
+		if got := authorReference(test.entry); got != test.reference {
+			t.Errorf("basic authors = %q, want %q", got, test.reference)
+		}
+		if got := Reference(test.entry); !strings.HasPrefix(got, test.reference+". ") {
+			t.Errorf("basic reference changed corporate identity: %q", got)
+		}
+		if got := authorCitation(test.entry); got != test.citation {
+			t.Errorf("citation = %q, want %q", got, test.citation)
+		}
+	}
+	if got := nameSort(corporate); got != "world health organization" {
+		t.Fatalf("corporate sort key = %q", got)
+	}
+	if nameSort(Entry{"author": "Zoe Adams"}) >= nameSort(corporate) || nameSort(corporate) >= nameSort(Entry{"author": "Amy Zeller"}) {
+		t.Fatal("corporate authors are not sorted by their full literal identity")
 	}
 }
 
@@ -328,6 +376,9 @@ func TestContentBibConversion(t *testing.T) {
 	if len(data.Bibliographies["reading"]) != 1 {
 		t.Fatalf("content bibliography missing: %#v", data.Bibliographies)
 	}
+	if err := Write(filepath.Join(dir, "data", "scholar.json"), data); err != nil {
+		t.Fatal(err)
+	}
 	generated, err := os.ReadFile(filepath.Join(content, "reading.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -338,8 +389,11 @@ func TestContentBibConversion(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(content, "reading.md"), []byte("user page"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "basic"}); err == nil || !strings.Contains(err.Error(), "refusing to overwrite") {
+	if _, err := PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "basic"}); err == nil {
 		t.Fatalf("expected overwrite guard, got %v", err)
+	}
+	if current, err := os.ReadFile(filepath.Join(content, "reading.md")); err != nil || string(current) != "user page" {
+		t.Fatalf("user page was changed: %q, %v", current, err)
 	}
 	if err := os.WriteFile(filepath.Join(content, "reading.md"), generated, 0644); err != nil {
 		t.Fatal(err)
@@ -347,7 +401,11 @@ func TestContentBibConversion(t *testing.T) {
 	if err := os.Remove(filepath.Join(content, "reading.bib")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "basic"}); err != nil {
+	data, err = PrepareWithOptions(Options{Source: source, ContentDir: content, Style: "basic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Write(filepath.Join(dir, "data", "scholar.json"), data); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(content, "reading.md")); !os.IsNotExist(err) {
@@ -408,7 +466,7 @@ func TestRealCiteprocAPALinks(t *testing.T) {
 				entryReference = record.Entry["reference"]
 			}
 		}
-		for _, reference := range []string{data.Pages["_index.md"].References["references"][test.key], entryReference} {
+		for _, reference := range []string{data.Pages["_index.md"].Contexts[renderContextKey("references", "apa", "")].References[test.key], entryReference} {
 			if !strings.Contains(reference, test.link) {
 				t.Fatalf("%s reference has no APA link: %s", test.key, reference)
 			}

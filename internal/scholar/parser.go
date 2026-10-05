@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 type Entry map[string]string
@@ -69,9 +70,17 @@ func Parse(source string) ([]Entry, error) {
 			}
 			continue
 		}
+		p.space()
 		start := p.pos
 		for p.pos < len(source) && source[p.pos] != ',' && source[p.pos] != closer {
-			p.pos++
+			char, size := utf8.DecodeRuneInString(source[p.pos:])
+			if unicode.IsSpace(char) {
+				break
+			}
+			if char == '{' || char == '=' {
+				return nil, p.fail("expected comma after citation key")
+			}
+			p.pos += size
 		}
 		key := strings.TrimSpace(source[start:p.pos])
 		if key == "" {
@@ -81,6 +90,8 @@ func Parse(source string) ([]Entry, error) {
 		p.space()
 		if p.pos < len(source) && source[p.pos] == ',' {
 			p.pos++
+		} else if p.pos < len(source) && source[p.pos] != closer {
+			return nil, p.fail("expected comma after citation key")
 		}
 		for {
 			p.space()

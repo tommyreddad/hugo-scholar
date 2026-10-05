@@ -82,19 +82,11 @@
   },
   "pages": {
     "_index.md": {
-      "citations": {},
-      "references": {},
       "cited": {
         "references": [
           "go-book",
           "paper"
         ]
-      },
-      "basic_numbers": {
-        "references": {
-          "go-book": 1,
-          "paper": 2
-        }
       },
       "cited_at": {
         "2": {
@@ -103,22 +95,22 @@
             "paper"
           ]
         }
+      },
+      "contexts": {
+        "[\"references\",\"basic\",\"\"]": {
+          "basic_numbers": {
+            "go-book": 1,
+            "paper": 2
+          }
+        }
       }
     },
     "advanced.md": {
-      "citations": {},
-      "references": {},
       "cited": {
         "references": [
           "paper",
           "go-book"
         ]
-      },
-      "basic_numbers": {
-        "references": {
-          "go-book": 1,
-          "paper": 2
-        }
       },
       "cited_at": {
         "10": {
@@ -163,12 +155,32 @@
             "go-book"
           ]
         }
+      },
+      "contexts": {
+        "[\"references\",\"basic\",\"\"]": {
+          "basic_numbers": {
+            "go-book": 1,
+            "paper": 2
+          }
+        },
+        "[\"references\",\"basic\",\"advanced-\"]": {
+          "basic_numbers": {
+            "go-book": 1,
+            "paper": 2
+          }
+        },
+        "[\"references\",\"basic\",\"old-\"]": {
+          "basic_numbers": {
+            "go-book": 1,
+            "paper": 2
+          }
+        }
       }
     },
     "duplicates.md": {
-      "citations": {},
-      "references": {},
-      "cited": {},
+      "cited": {
+        "duplicates": null
+      },
       "cited_at": {
         "0": {
           "keys": []
@@ -176,24 +188,65 @@
         "1": {
           "keys": []
         }
+      },
+      "contexts": {
+        "[\"duplicates\",\"basic\",\"\"]": {
+          "basic_numbers": {
+            "edition-one": 1,
+            "edition-two": 1
+          }
+        }
       }
     },
     "grouped.md": {
-      "citations": {},
-      "references": {},
-      "cited": {},
+      "cited": {
+        "references": null
+      },
       "cited_at": {
         "0": {
           "keys": []
         }
+      },
+      "contexts": {
+        "[\"references\",\"basic\",\"\"]": {
+          "basic_numbers": {
+            "go-book": 1,
+            "paper": 2
+          }
+        }
       }
     },
     "missing.md": {
-      "citations": {},
-      "references": {},
-      "cited": {},
-      "basic_numbers": {
-        "references": {}
+      "cited": {
+        "references": null
+      },
+      "contexts": {
+        "[\"references\",\"basic\",\"\"]": {}
+      }
+    },
+    "reading.md": {
+      "cited": {
+        "reading": null
+      },
+      "contexts": {
+        "[\"reading\",\"basic\",\"\"]": {}
+      }
+    }
+  },
+  "query_matches": {
+    "references": {
+      "!@book": {
+        "paper": true
+      },
+      "@*[year\u003c1900]": {
+        "paper": true
+      },
+      "@book, @inproceedings": {
+        "go-book": true,
+        "paper": true
+      },
+      "@book[year\u003e=2000 \u0026\u0026 author ^= Donovan]": {
+        "go-book": true
       }
     }
   },

@@ -27,35 +27,25 @@ var (
 
 func main() {
 	flag.Parse()
-	if *bibliography == "" || *style == "" {
-		resolved, err := scholar.ReadSiteDefaults()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "hugo-scholar:", err)
-			os.Exit(1)
-		}
-		if *bibliography == "" {
-			*bibliography = resolved.Bibliography
-		}
-		if *style == "" {
-			*style = resolved.Style
-		}
+	resolved, err := scholar.ReadSiteDefaults()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "hugo-scholar:", err)
+		os.Exit(1)
 	}
-	options := scholar.Options{Source: *source, DefaultBibliography: *bibliography, Repository: *repository, RepositoryURL: *repositoryURL, RepositoryDelimiter: *repositoryDelimiter, Style: *style, Locale: *locale, AllowLocaleOverrides: *allowLocaleOverrides, CiteprocPath: *citeproc, ContentDir: *content}
+	if *bibliography == "" {
+		*bibliography = resolved.Bibliography
+	}
+	if *style == "" {
+		*style = resolved.Style
+	}
+	options := scholar.Options{Source: *source, DefaultBibliography: *bibliography, Repository: *repository, RepositoryURL: *repositoryURL, RepositoryDelimiter: *repositoryDelimiter, Style: *style, RemoveDuplicates: resolved.RemoveDuplicates, Query: resolved.Query, Locale: *locale, AllowLocaleOverrides: *allowLocaleOverrides, CiteprocPath: *citeproc, ContentDir: *content}
 	if *details {
 		options.DetailsDir = *detailsDir
 		options.DetailsPermalink = *detailsPermalink
 	}
 	data, err := scholar.PrepareWithOptions(options)
-	if err == nil && *details {
-		entries, exists := data.Bibliographies[*bibliography]
-		if !exists {
-			err = fmt.Errorf("default bibliography %q is missing", *bibliography)
-		} else {
-			err = scholar.WriteDetails(*content, *detailsDir, entries)
-		}
-	}
 	if err == nil {
-		err = scholar.WriteJSON(*output, data)
+		err = scholar.Write(*output, data)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "hugo-scholar:", err)

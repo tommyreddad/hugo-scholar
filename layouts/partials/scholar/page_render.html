@@ -1,0 +1,8 @@
+{{- $rendered := dict -}}
+{{- with .page.File -}}
+  {{- with index (hugo.Data.scholar.pages | default dict) .Path -}}
+    {{- $key := slice $.file $.style ($.prefix | default "") | jsonify | string -}}
+    {{- $rendered = index (.contexts | default dict) $key | default dict -}}
+  {{- end -}}
+{{- end -}}
+{{- return $rendered -}}

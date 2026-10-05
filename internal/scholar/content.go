@@ -11,8 +11,8 @@ import (
 
 const contentMarker = "<!-- Generated from BibTeX by Hugo Scholar. Do not edit. -->"
 
-// convertContentBib gives Hugo a Markdown counterpart for each content BibTeX
-// page. Text outside entries stays in place; each entry becomes a reference.
+// convertContentBib prepares Markdown counterparts without changing content.
+// Text outside entries stays in place; each entry becomes a reference.
 func convertContentBib(options Options, data *Data) error {
 	root := options.ContentDir
 	if root == "" {
@@ -75,7 +75,8 @@ func convertContentBib(options Options, data *Data) error {
 		} else if !os.IsNotExist(err) {
 			return err
 		}
-		return os.WriteFile(target, []byte(rendered.String()), 0644)
+		data.files[target] = []byte(rendered.String())
+		return nil
 	})
 	if err != nil {
 		return err
@@ -102,7 +103,7 @@ func convertContentBib(options Options, data *Data) error {
 			return err
 		}
 		if strings.Contains(string(content), contentMarker) {
-			return os.Remove(filename)
+			data.files[filename] = nil
 		}
 		return nil
 	})

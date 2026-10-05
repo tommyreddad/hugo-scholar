@@ -2,6 +2,7 @@
 {{- $key := .Get "key" | default (.Get 0) -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
 {{- $entries := partial "scholar/entries.html" (dict "file" $file) -}}
+{{- $rendered := partial "scholar/page_render.html" (dict "page" .Page "file" $file "style" $style "prefix" (.Get "prefix")) -}}
 {{- $found := false -}}
 {{- range $entries -}}
   {{- if eq .key $key -}}
@@ -9,24 +10,12 @@
     {{- $reference := .reference -}}
     {{- if eq $style "basic" -}}
       {{- $reference = .basic_reference -}}
-      {{- with hugo.Data.scholar.pages -}}
-        {{- with index . $.Page.File.Path -}}
-          {{- with index (index .basic_numbers $file | default dict) $key -}}
-            {{- $reference = printf "[%d] %s" (int .) (replaceRE `^\[[0-9]+\] ` "" $reference) -}}
-          {{- end -}}
-        {{- end -}}
+      {{- with index ($rendered.basic_numbers | default dict) $key -}}
+        {{- $reference = printf "[%d] %s" (int .) (replaceRE `^\[[0-9]+\] ` "" $reference) -}}
       {{- end -}}
     {{- end -}}
-    {{- with hugo.Data.scholar.pages -}}
-      {{- with index . $.Page.File.Path -}}
-        {{- $rendered := .references -}}
-        {{- if ne $style hugo.Data.scholar.style -}}{{ $rendered = index .styled_references $style | default dict }}{{ end -}}
-        {{- if ne $style "basic" -}}
-          {{- with index $rendered $file -}}
-            {{- with index . $key -}}{{ $reference = . }}{{ end -}}
-          {{- end -}}
-        {{- end -}}
-      {{- end -}}
+    {{- if ne $style "basic" -}}
+      {{- with index ($rendered.references | default dict) $key -}}{{ $reference = . }}{{ end -}}
     {{- end -}}
     {{- if $.Get "block" -}}
       <div class="scholar-reference">{{ partial "scholar/reference_content.html" (dict "reference" $reference) }}</div>

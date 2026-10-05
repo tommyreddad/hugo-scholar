@@ -3,10 +3,8 @@
 {{- $selected := $entries -}}
 {{- $inOrder := .Get "cited_in_order" -}}
 {{- $cited := slice -}}
-{{- $pageData := dict -}}
 {{- with hugo.Data.scholar.pages -}}
   {{- with index . $.Page.File.Path -}}
-    {{- $pageData = . -}}
     {{- $cited = index .cited $file | default (slice) -}}
     {{- if or ($.Get "cited") $inOrder -}}
       {{- with index .cited_at (partial "scholar/shortcode_id.html" $) -}}{{ $cited = .keys | default (slice) }}{{ end -}}
@@ -28,13 +26,12 @@
   {{- end -}}
 {{- end -}}
 {{- $query := .Get "query" | default site.Params.scholar.query -}}
-{{- $selected = partial "scholar/filter.html" (dict "entries" $selected "type" (.Get "type") "query" $query) -}}
+{{- $selected = partial "scholar/filter.html" (dict "entries" $selected "file" $file "type" (.Get "type") "query" $query) -}}
 {{- $sortBy := .Get "sort_by" | default site.Params.scholar.sort_by -}}
 {{- $style := .Get "style" | default hugo.Data.scholar.style -}}
 {{- if and (not $sortBy) (not $inOrder) (ne $style "basic") -}}
-  {{- $orders := $pageData.orders | default dict -}}
-  {{- if ne $style hugo.Data.scholar.style -}}{{ $orders = index ($pageData.styled_orders | default dict) $style | default dict }}{{ end -}}
-  {{- with index $orders $file -}}
+  {{- $rendered := partial "scholar/page_render.html" (dict "page" .Page "file" $file "style" $style "prefix" (.Get "prefix")) -}}
+  {{- with $rendered.order -}}
     {{- $ordered := slice -}}
     {{- range . -}}
       {{- $key := . -}}

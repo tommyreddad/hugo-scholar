@@ -57,50 +57,50 @@ root directory.
    {{< bibliography cited=true >}}
    ```
 
-4. **Generate and build.** Run the generator whenever a reference or citation
-   changes, before running Hugo:
+4. **Generate and build.** Rerun after bibliography, shortcode, or Scholar
+   configuration changes:
 
    ```sh
    go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar
    hugo
    ```
 
+   Add `--help` to the generator command to list generator options.
+
 The page now has a linked `[1]` citation and a bibliography entry with the
 paper's title linked to its URL. The generator writes `data/scholar.json`; Hugo
 reads that file when it builds the page.
 
-## Build and deploy
-
-If your deployment builds from source, run both commands in its build step:
-
-```sh
-go run github.com/tommyreddad/hugo-scholar/cmd/hugo-scholar && hugo --minify
-```
-
-Hugo writes the site to `public/`. For
-[Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/),
-use the command above as the build command and `public/` as the output
-directory. For
-[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site),
-run it in your Actions workflow before uploading `public/`. If your deployment
-runs only Hugo, generate `data/scholar.json` locally and commit it with your
-content changes. The default style needs no `citeproc` installation in either
-workflow.
-
 ## Shortcodes
 
-- `{{< bibliography >}}` lists every entry in `references.bib`.
-- `{{< bibliography cited=true >}}` lists only entries cited on that page.
-- `{{< cite keys="sample another-key" >}}` cites multiple entries together.
+| Example | Purpose |
+| --- | --- |
+| `{{< cite "sample" >}}` | A linked in-text citation. |
+| `{{< cite keys="sample another-key" >}}` | Several citations together. |
+| `{{< bibliography >}}` | All entries in the default bibliography. |
+| `{{< bibliography cited=true >}}` | Entries cited before this shortcode. |
+| `{{< bibliography_count >}}` | The number of matching entries. |
+
+**Citation options:** `locator="42"` adds a shared page locator;
+`separate_links=true` links each key individually.
+
+**Bibliography options:**
+
+- `query="@book[year>=2020]"` filters entries. Use `,` between selectors and
+  `&&` between conditions; predicate values can contain commas.
+- `remove_duplicates=true` merges matching `year,title` entries, ignoring case
+  and whitespace. Use `match_fields="doi"` to match by DOI instead.
+- `clear=true` resets cited selection for subsequent lists.
+- Use the same `prefix` on citations and their bibliography, with distinct
+  prefixes for independently configured lists.
 
 ## Bibliography styles
 
 ### Basic
 
-The default `basic` style numbers references on each page. It formats journal
-volume, issue, and pages when those fields are present. Add `shortjournal` to a
-BibTeX entry to display an abbreviated journal name; otherwise it uses
-`journal`. A `url` links the title, with `doi` as a fallback.
+The default `basic` style numbers references per page and links titles using
+`url`, falling back to `doi`. Set `shortjournal` to override `journal` with an
+abbreviated name.
 
 ### CSL styles
 
@@ -119,11 +119,24 @@ it in your site's `styles/` directory (for example,
 Commit the file so your deployment can use it. If the style depends on a parent
 style that is also not bundled, save that `.csl` file there too.
 
+## Build and deploy
+
+- **Generate during deployment:** run the generator before Hugo.
+- **Generate locally:** commit `data/scholar.json` so deployment only needs Hugo.
+  Also commit generated Markdown for `--details` and BibTeX pages in `content/`.
+
+Publish `public/`; see the deployment guides for
+[Cloudflare Pages](https://developers.cloudflare.com/pages/framework-guides/deploy-a-hugo-site/) and
+[GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+
+Content `.bib` and `.bibtex` files may be published verbatim; omit private
+annotations.
+
 ## More examples
 
 See the [example site](example/) for more shortcodes and the author's
 [publications page](https://tommy.reddad.net/publications/) for a rendered
-bibliography. Add `--help` to the generator command to see all options.
+bibliography.
 
 ## Credits and license
 

@@ -11,13 +11,15 @@ import (
 )
 
 type SiteDefaults struct {
-	Bibliography string
-	Style        string
+	Bibliography     string
+	Style            string
+	RemoveDuplicates bool
+	Query            string
 }
 
 // ReadSiteDefaults asks Hugo to resolve its configuration, including config
 // directories and environment overrides. Standalone BibTeX directories do not
-// need Hugo; callers can also supply both defaults explicitly.
+// need Hugo.
 func ReadSiteDefaults() (SiteDefaults, error) {
 	defaults := SiteDefaults{Bibliography: "references", Style: "basic"}
 	configured := false
@@ -39,13 +41,15 @@ func ReadSiteDefaults() (SiteDefaults, error) {
 	command.Stderr = &stderr
 	output, err := command.Output()
 	if err != nil {
-		return defaults, fmt.Errorf("read Hugo configuration (or set both --bibliography and --style explicitly): %w: %s", err, strings.TrimSpace(stderr.String()))
+		return defaults, fmt.Errorf("read Hugo configuration: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	var config struct {
 		Params struct {
 			Scholar struct {
-				Bibliography string
-				Style        string
+				Bibliography     string
+				Style            string
+				RemoveDuplicates bool `json:"remove_duplicates"`
+				Query            string
 			}
 		}
 	}
@@ -54,5 +58,7 @@ func ReadSiteDefaults() (SiteDefaults, error) {
 	}
 	defaults.Bibliography = firstNonempty(config.Params.Scholar.Bibliography, defaults.Bibliography)
 	defaults.Style = firstNonempty(config.Params.Scholar.Style, defaults.Style)
+	defaults.RemoveDuplicates = config.Params.Scholar.RemoveDuplicates
+	defaults.Query = config.Params.Scholar.Query
 	return defaults, nil
 }

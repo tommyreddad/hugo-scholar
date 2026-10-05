@@ -60,6 +60,11 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 	}
 	const duplicates = `@book{a,title={Same},year=2020}
 @book{b,title={Same},year=2020}`
+	const queryBibliography = `@book{a,author={Doe, Jane},title={Short Year},year=9}
+@book{b,author={Roe, John},title={Other Author},year=2021}
+@book{c,author={Doe, Jane},title={Matching Book},year=2022}
+@article{d,author={Doe, Jane},title={Matching Article},year=2023}
+@book{e,author={Roe, John},title={Upcoming},year={in press}}`
 	tests := []integrationCase{
 		{
 			name: "basic numbered journal reference", style: "basic",
@@ -89,8 +94,29 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		},
 		{
 			name: "basic multiple citations and locator", style: "basic",
-			page:       `{{< cite keys="b a" separate_links=true >}} {{< cite key="b" locator="42" >}} {{< bibliography >}}`,
-			want:       []string{`[<a class="citation" href="#b">2</a>, <a class="citation" href="#a">1</a>]`, `href="#b">[2, p. 42]</a>`, `id="a">[1]`},
+			page:       `{{< cite keys="b a" separate_links=true >}} {{< cite keys="a b" locator="42" separate_links=true >}} {{< cite keys="a b" locator="42" >}} {{< cite key="b" locator="42" >}} {{< bibliography >}}`,
+			want:       []string{`[<a class="citation" href="#b">2</a>, <a class="citation" href="#a">1</a>]`, `[<a class="citation" href="#a">1</a>, <a class="citation" href="#b">2</a>, p. 42]`, `href="#a">[1, 2, p. 42]</a>`, `href="#b">[2, p. 42]</a>`, `id="a">[1]`},
+			countItems: 3,
+		},
+		{
+			name: "basic site separate links keep shared locator", style: "basic",
+			config:     "[params.scholar]\nseparate_links = true\n",
+			page:       `{{< cite keys="a b" locator="42" >}} {{< bibliography >}}`,
+			want:       []string{`[<a class="citation" href="#a">1</a>, <a class="citation" href="#b">2</a>, p. 42]`},
+			absent:     []string{`href="#a">[1, 2`},
+			countItems: 3,
+		},
+		{
+			name: "CSL separate links keep individual locators", style: "ieee",
+			page:       `{{< cite keys="b a" locators="42|7" labels="page|page" separate_links=true >}} {{< bibliography >}}`,
+			want:       []string{`[<a class="citation" href="#b">1, p. 42</a>, <a class="citation" href="#a">2, p. 7</a>]`},
+			countItems: 3,
+		},
+		{
+			name: "CSL override site separate links keep individual locators", style: "basic", needsCiteproc: true,
+			config:     "[params.scholar]\nseparate_links = true\n",
+			page:       `{{< cite keys="b a" style="ieee" locators="42|7" labels="page|page" >}} {{< bibliography style="ieee" >}}`,
+			want:       []string{`[<a class="citation" href="#b">1, p. 42</a>, <a class="citation" href="#a">2, p. 7</a>]`},
 			countItems: 3,
 		},
 		{
@@ -168,9 +194,9 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 			generateError: "uninstalled-parent.csl",
 		},
 		{
-			name: "safe IDs and prefixes", bib: `@book{x"><img src=x onerror=alert(1)>,title={Ordinary}}`,
+			name: "safe IDs and prefixes", bib: `@book{x"><script>alert(1)</script>,title={Ordinary}}`,
 			page: "{{< bibliography prefix=`pre\"><script>alert(2)</script>` >}}",
-			want: []string{"&lt;img", "&lt;script"}, absent: []string{"<img", "<script"}, countItems: 1,
+			want: []string{"&lt;script"}, absent: []string{"<script"}, countItems: 1,
 		},
 		{
 			name: "BibTeX identity", bib: `@techreport{original,key={sort-key},type={Research Report},title={Report},year=2024}`,
@@ -223,12 +249,105 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		{
 			name: "deduplicate cited", bib: duplicates,
 			page: `{{< cite "b" >}} {{< bibliography cited=true remove_duplicates=true >}}`,
-			want: []string{`id="b"`, `id="a"`}, countItems: 1,
+			want: []string{`href="#b">[1]</a>`, `id="b">[1]`, `id="a"`}, countItems: 1,
 		},
 		{
 			name: "deduplicate full", bib: duplicates,
 			page: `{{< cite "a" >}} {{< cite "b" >}} {{< bibliography remove_duplicates=true >}}`,
-			want: []string{`id="a"`, `id="b"`}, countItems: 1,
+			want: []string{`href="#a">[1]</a>`, `href="#b">[1]</a>`, `id="a">[1]`, `id="b"`}, absent: []string{`[2]`}, countItems: 1,
+		},
+		{
+			name: "deduplicate IEEE numbers", style: "ieee", bib: duplicates,
+			page:   `{{< cite "a" >}} {{< cite "b" >}} {{< bibliography remove_duplicates=true >}}`,
+			want:   []string{`href="#a">[1]</a>`, `href="#b">[1]</a>`, `csl-left-margin">[1]</span>`, `id="b"`},
+			absent: []string{`[2]`}, countItems: 1,
+		},
+		{
+			name: "deduplicate site default", bib: duplicates,
+			config: "[params.scholar]\nremove_duplicates = true\n",
+			page:   `{{< cite "a" >}} {{< cite "b" >}} {{< bibliography >}}`,
+			want:   []string{`href="#a">[1]</a>`, `href="#b">[1]</a>`, `id="a">[1]`},
+			absent: []string{`[2]`}, countItems: 1,
+		},
+		{
+			name: "deduplicate can be disabled", bib: duplicates,
+			config: "[params.scholar]\nremove_duplicates = true\n",
+			page:   `{{< cite "a" >}} {{< cite "b" >}} {{< bibliography remove_duplicates=false >}}`,
+			want:   []string{`href="#a">[1]</a>`, `href="#b">[2]</a>`, `id="b">[2]`}, countItems: 2,
+		},
+		{
+			name: "deduplicate keeps other prefix independent", bib: duplicates,
+			page: `{{< cite key="b" prefix="unique-" >}} {{< cite key="b" prefix="all-" >}}
+
+{{< bibliography prefix="unique-" remove_duplicates=true >}}
+
+{{< bibliography prefix="all-" >}}`,
+			want:       []string{`href="#unique-b">[1]</a>`, `href="#all-b">[2]</a>`, `id="unique-b">[1]`, `id="all-b">[2]`},
+			countItems: 3,
+		},
+		{
+			name: "deduplicate custom fields and input normalization",
+			bib: `@book{a,title={One},year=2020,doi={10.1/X}}
+@book{b,title={Two},year=2021,doi={ 10.1/x }}
+@book{c,title={Three},year=2022,doi={10.1/y}}`,
+			page:   `{{< cite "b" >}} {{< cite "c" >}} {{< bibliography remove_duplicates=true match_fields=" doi " >}}`,
+			want:   []string{`href="#b">[1]</a>`, `href="#c">[2]</a>`, `id="b">[1]`, `id="c">[2]`, `id="a"`},
+			absent: []string{`[3]`}, countItems: 2,
+		},
+		{
+			name: "deduplicate cited order and quotes",
+			bib:  `@book{a,title={Same},year=2020} @book{b,title={Same},year=2020} @book{c,title={Other},year=2021}`,
+			page: `{{< quote "c" >}}Quoted{{< /quote >}} {{< cite "b" >}} {{< cite "a" >}}
+
+{{< bibliography cited_in_order=true remove_duplicates=true >}}`,
+			want:    []string{`href="#c">[1]</a>`, `href="#b">[2]</a>`, `href="#a">[2]</a>`, `id="c">[1]`, `id="b">[2]`},
+			ordered: []string{`id="c">`, `id="b">`}, countItems: 2,
+		},
+		{
+			name: "deduplicate style override", style: "apa", bib: duplicates,
+			page:   `{{< cite key="a" style="ieee" >}} {{< cite key="b" style="ieee" >}} {{< bibliography style="ieee" remove_duplicates=true >}}`,
+			want:   []string{`href="#a">[1]</a>`, `href="#b">[1]</a>`, `csl-left-margin">[1]</span>`},
+			absent: []string{`[2]`}, countItems: 1,
+		},
+		{
+			name:    "deduplicate cited-only preserves displayed numbering",
+			bib:     `@book{a,title={Same},year=2020} @book{c,title={Other},year=2021} @book{b,title={Same},year=2020}`,
+			page:    `{{< cite "b" >}} {{< cite "c" >}} {{< bibliography cited=true remove_duplicates=true >}}`,
+			want:    []string{`href="#b">[2]</a>`, `href="#c">[1]</a>`, `id="c">[1]`, `id="b">[2]`},
+			ordered: []string{`id="c">`, `id="b">`}, countItems: 2,
+		},
+		{
+			name: "deduplicate CSL representative respects type", style: "ieee",
+			bib:    `@book{a,title={Book},doi={10.1/x}} @article{b,title={Article},doi={10.1/x}}`,
+			page:   `{{< cite "b" >}} {{< bibliography type="book" remove_duplicates=true match_fields="doi" >}}`,
+			want:   []string{`href="#b">[1]</a>`, `id="a"`, `<i>Book</i>`},
+			absent: []string{`Article`}, countItems: 1,
+		},
+		{
+			name: "deduplicate CSL representative respects query", style: "ieee",
+			bib:    `@book{a,title={Selected},author={Doe, Jane},doi={10.1/x}} @book{b,title={Excluded},author={Roe, Ray},doi={10.1/x}}`,
+			page:   `{{< cite "b" >}} {{< bibliography query="@book[author=Doe, Jane]" remove_duplicates=true match_fields="doi" >}}`,
+			want:   []string{`href="#b">[1]</a>`, `id="a"`, `<i>Selected</i>`, `J. Doe`},
+			absent: []string{`Excluded`, `R. Roe`}, countItems: 1,
+		},
+		{
+			name: "deduplicate CSL representative respects cited snapshot", style: "ieee",
+			bib:    `@book{a,title={One},doi={10.1/x}} @book{b,title={Two},doi={10.1/x}}`,
+			page:   `{{< cite "b" >}} {{< bibliography cited=true clear=true remove_duplicates=true match_fields="doi" >}} {{< cite "a" >}}`,
+			want:   []string{`href="#b">[1]</a>`, `href="#a">[1]</a>`, `id="b"`, `<i>Two</i>`},
+			absent: []string{`<i>One</i>`}, countItems: 1,
+		},
+		{
+			name: "site query uses shared predicate matching", bib: queryBibliography,
+			config: "[params.scholar]\nquery = '@book[author=Doe, Jane]'\n",
+			page:   `{{< bibliography >}}`,
+			want:   []string{`id="a"`, `id="c"`}, absent: []string{`id="b"`, `id="d"`, `id="e"`}, countItems: 2,
+		},
+		{
+			name: "query count and regex classes share matching",
+			bib:  `@book{a,title={Doe, Jane}} @book{b,title={No Comma}} @article{c,title={Third}}`,
+			page: "{{< bibliography_count query=`@book[title~=[,\\]]], @article` >}} {{< bibliography query=`@book[title~=[,\\]]], @article` >}}",
+			want: []string{`id="a"`, `id="c"`}, absent: []string{`id="b"`}, countItems: 2,
 		},
 		{
 			name: "missing month", page: `{{< bibliography group_by="month_numeric" >}}`,
@@ -237,6 +356,69 @@ func TestGeneratorHugoIntegration(t *testing.T) {
 		{
 			name: "nonnumeric year", bib: integrationBibliography + ` @book{upcoming,title={Upcoming},year={in press}}`,
 			page: `{{< bibliography query="@book[year>=2000]" >}}`, absent: []string{"Upcoming"}, countItems: 3,
+		},
+		{
+			name: "query author comma stays inside predicate", bib: queryBibliography,
+			page:       `{{< bibliography query="@book[author=Doe, Jane]" sort_by="none" >}}`,
+			ordered:    []string{`id="a"`, `id="c"`},
+			absent:     []string{`id="b"`, `id="d"`, `id="e"`},
+			countItems: 2,
+		},
+		{
+			name: "query regex quantifier comma stays inside predicate", bib: queryBibliography,
+			page:       `{{< bibliography query="@book[year~=[0-9]{2,4}]" sort_by="none" >}}`,
+			ordered:    []string{`id="b"`, `id="c"`},
+			absent:     []string{`id="a"`, `id="d"`, `id="e"`},
+			countItems: 2,
+		},
+		{
+			name: "query author comma in union retains source order", bib: queryBibliography,
+			page:       `{{< bibliography query="@article, @book[author=Doe, Jane]" sort_by="none" >}}`,
+			ordered:    []string{`id="a"`, `id="c"`, `id="d"`},
+			absent:     []string{`id="b"`, `id="e"`},
+			countItems: 3,
+		},
+		{
+			name: "query regex comma in union retains source order", bib: queryBibliography,
+			page:       `{{< bibliography query="@article, @book[year~=[0-9]{2,4}]" sort_by="none" >}}`,
+			ordered:    []string{`id="b"`, `id="c"`, `id="d"`},
+			absent:     []string{`id="a"`, `id="e"`},
+			countItems: 3,
+		},
+		{
+			name: "query predicate commas and overlapping union boundaries", bib: queryBibliography,
+			page:       `{{< bibliography query="@book[year~=[0-9]{2,4}], @book[author=Doe, Jane], @article" sort_by="none" >}}`,
+			ordered:    []string{`id="a"`, `id="b"`, `id="c"`, `id="d"`},
+			absent:     []string{`id="e"`},
+			countItems: 4,
+		},
+		{
+			name: "query ordinary type selector", bib: queryBibliography,
+			page:       `{{< bibliography query="@article" sort_by="none" >}}`,
+			want:       []string{`id="d"`},
+			absent:     []string{`id="a"`, `id="b"`, `id="c"`, `id="e"`},
+			countItems: 1,
+		},
+		{
+			name: "query ordinary top level union", bib: queryBibliography,
+			page:       `{{< bibliography query="@article, @book[year=2021]" sort_by="none" >}}`,
+			ordered:    []string{`id="b"`, `id="d"`},
+			absent:     []string{`id="a"`, `id="c"`, `id="e"`},
+			countItems: 2,
+		},
+		{
+			name: "query ordinary logical predicates", bib: queryBibliography,
+			page:       `{{< bibliography query="@book[year>=2021 && year<=2022 || year=9]" sort_by="none" >}}`,
+			ordered:    []string{`id="a"`, `id="b"`, `id="c"`},
+			absent:     []string{`id="d"`, `id="e"`},
+			countItems: 3,
+		},
+		{
+			name: "query ordinary negated type and field presence", bib: queryBibliography,
+			page:       `{{< bibliography query="!@article[author]" sort_by="none" >}}`,
+			ordered:    []string{`id="a"`, `id="b"`, `id="c"`, `id="e"`},
+			absent:     []string{`id="d"`},
+			countItems: 4,
 		},
 		{
 			name: "raw string keys", style: "styles/numeric.csl", page: "{{< cite keys=`b\na` >}} {{< bibliography cited=true >}}",

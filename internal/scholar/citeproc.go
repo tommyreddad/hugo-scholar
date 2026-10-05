@@ -49,27 +49,17 @@ var cslTypes = map[string]string{
 
 func cslNames(raw string) []map[string]string {
 	var names []map[string]string
-	for _, rawName := range splitNames(raw) {
-		name := Clean(rawName)
-		if name == "" {
+	for _, name := range parseNames(raw) {
+		if name.literal != "" {
+			names = append(names, map[string]string{"literal": name.literal})
 			continue
 		}
-		if strings.HasPrefix(rawName, "{") && strings.HasSuffix(rawName, "}") {
-			names = append(names, map[string]string{"literal": name})
-			continue
+		person := map[string]string{"family": name.family}
+		if name.given != "" {
+			person["given"] = name.given
 		}
-		family, given, comma := strings.Cut(name, ",")
-		if !comma {
-			parts := strings.Fields(name)
-			if len(parts) == 0 {
-				continue
-			}
-			family = parts[len(parts)-1]
-			given = strings.Join(parts[:len(parts)-1], " ")
-		}
-		person := map[string]string{"family": strings.TrimSpace(family)}
-		if given = strings.TrimSpace(given); given != "" {
-			person["given"] = given
+		if name.suffix != "" {
+			person["suffix"] = name.suffix
 		}
 		names = append(names, person)
 	}
